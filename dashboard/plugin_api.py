@@ -36,8 +36,8 @@ def _resolve_xurl() -> tuple[str, str | None]:
     return "xurl", None
 
 XURL, XURL_CLI = _resolve_xurl()
-APP = os.environ.get("X_ANALYTICS_APP", "omx0r-xurl")
-USER = os.environ.get("X_ANALYTICS_USER", "omx0r")
+APP = os.environ.get("X_DASHBOARD_APP")  # optional; defaults to xurl's default app
+USER = os.environ.get("X_DASHBOARD_USER")  # optional label only
 
 _cache: dict[str, Any] = {}
 _cache_lock = threading.Lock()
@@ -48,7 +48,9 @@ def _run_xurl(path: str, timeout: int = 30) -> dict:
     cmd = [XURL]
     if XURL_CLI:
         cmd.append(XURL_CLI)
-    cmd += ["--app", APP, path]
+    if APP:
+        cmd += ["--app", APP]
+    cmd.append(path)
     try:
         proc = subprocess.run(
             cmd, capture_output=True, text=True, timeout=timeout, check=False
