@@ -1,0 +1,13 @@
+{
+  "name": "x-dashboard",
+  "label": "X Dashboard",
+  "description": "Read-only X analytics dashboard for Hermes (each user brings own X API credits)",
+  "icon": "BarChart3",
+  "version": "0.1.0",
+  "tab": {
+    "path": "/x-dashboard",
+    "position": "after:analytics"
+  },
+  "entry": "dist/index.js",
+  "api": "plugin_api.py"
+}
