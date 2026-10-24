@@ -325,12 +325,6 @@ def _resolve_xurl_binary() -> tuple[str | None, str | None]:
                 if bin_match.is_file() and not bin_match.name.lower().endswith(".cmd"):
                     return str(bin_match), None
 
-    hardcoded = Path(
-        "C:/Users/q2p/AppData/Local/hermes/tools/node-26.7.0-win32-x64/node_modules/@xdevplatform/xurl/binary/xurl.exe"
-    )
-    if hardcoded.exists():
-        return str(hardcoded), None
-
     if found:
         return found, None
     return None, None

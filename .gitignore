@@ -4,3 +4,4 @@ __pycache__/
 .DS_Store
 *.tsbuildinfo
 test/.build/
+desktop/.hermes-package.json

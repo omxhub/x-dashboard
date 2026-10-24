@@ -8,7 +8,7 @@ import path from "path";
 export default defineConfig({
   build: {
     outDir: "desktop",
-    emptyOutDir: true,
+    emptyOutDir: false,
     minify: false,
     lib: {
       entry: path.resolve(__dirname, "src/desktop/index.tsx"),
