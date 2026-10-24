@@ -511,7 +511,7 @@ export default function XDashboardPage() {
                   title="Sync verified_followers_count and owned metrics via local Hermes xurl/xchat OAuth2 token"
                   data-testid="xd-sync-v2-btn"
                 >
-                  ⚡ Sync Official X API v2
+                  ⚡ Sync Official X API
                 </button>
 
                 <button
@@ -632,7 +632,7 @@ export default function XDashboardPage() {
               <span className="xd-kpi-label">Verified Followers</span>
               <span className="xd-kpi-pill is-emerald">
                 {account?.verified_followers_cached || verifiedFollowers > 0
-                  ? "X API v2 Cached"
+                  ? "X API Cached"
                   : "Public Mode"}
               </span>
             </div>
@@ -1439,7 +1439,7 @@ export default function XDashboardPage() {
                 </div>
                 <p className="xd-post-text" style={{ color: "var(--xd-text-muted)" }}>
                   {status?.cost_policy ||
-                    "X Dashboard automatically links your existing Hermes X credentials (~/.xurl, XCHAT_ACCESS_TOKEN, or public handle) and defaults to 100% Free Mode so routine dashboard refreshes never burn paid X API v2 credits."}
+                    "X Dashboard automatically links your existing Hermes X credentials (~/.xurl, XCHAT_ACCESS_TOKEN, or public handle) and defaults to 100% Free Mode so routine dashboard refreshes never burn paid X API credits."}
                 </p>
               </div>
             </div>
@@ -1449,11 +1449,11 @@ export default function XDashboardPage() {
         {/* Footer */}
         <footer className="xd-footer-bar">
           <span>
-            Hermes X Dashboard v2 · Read-only telemetry · Active source:{" "}
+            Hermes X Dashboard · Read-only telemetry · Active source:{" "}
             <strong>{status?.active_source || "public_free"}</strong>
           </span>
           <span>
-            100% Free Mode ($0.00) by default · Optional X API v2 sync on demand
+            100% Free Mode ($0.00) by default · Optional X API sync on demand
           </span>
         </footer>
       </div>

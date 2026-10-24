@@ -126,7 +126,7 @@ const MOCK_SUMMARY_V2 = {
     items: [
       {
         id: "p1",
-        text: "Shipping the new zero-cost X Dashboard v2 for @HermesAgent! #Hermes #OpenSource",
+        text: "Shipping the new zero-cost X Dashboard for @HermesAgent! #Hermes #OpenSource",
         created_at: "2026-10-23T15:30:00Z",
         impressions: 28400,
         likes: 640,
