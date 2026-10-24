@@ -1,9 +1,9 @@
 {
   "name": "x-dashboard",
   "label": "X Dashboard",
-  "description": "Read-only X analytics dashboard for Hermes (each user brings own X API credits)",
+  "description": "Zero-cost & auto-linked X analytics dashboard for Hermes Desktop and Web (100% Free Mode default + optional X API v2 live sync)",
   "icon": "BarChart3",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "tab": {
     "path": "/x-dashboard",
     "position": "after:analytics"

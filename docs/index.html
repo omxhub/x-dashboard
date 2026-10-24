@@ -1,0 +1,672 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>X Dashboard v2 — Zero-Cost Creator &amp; Agent Command Center for Hermes</title>
+  <meta name="description" content="100% Free Mode ($0.00) X analytics plugin for Hermes Web Dashboard and Hermes Desktop with automatic xurl/xchat account detection and interactive SVG telemetry." />
+  <style>
+    :root {
+      --color-primary: #1d9bf0;
+      --color-foreground: #f1f5f9;
+      --color-muted-foreground: #94a3b8;
+      --ui-editor-surface-background: #07090e;
+      --xd-accent: #1d9bf0;
+      --xd-accent-cyan: #38bdf8;
+      --xd-accent-emerald: #10b981;
+      --xd-accent-amber: #f59e0b;
+      --xd-accent-rose: #f43f5e;
+      --xd-accent-violet: #8b5cf6;
+      --xd-bg: #06080d;
+      --xd-surface: rgba(15, 20, 30, 0.86);
+      --xd-surface-elevated: rgba(22, 29, 44, 0.92);
+      --xd-border: rgba(56, 189, 248, 0.16);
+      --xd-border-strong: rgba(56, 189, 248, 0.36);
+      --xd-text: #f1f5f9;
+      --xd-text-muted: #94a3b8;
+      --xd-text-dim: #64748b;
+      --xd-font-sans: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", sans-serif;
+      --xd-font-mono: "JetBrains Mono", "Fira Code", ui-monospace, monospace;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: var(--xd-font-sans);
+      color: var(--xd-text);
+      background:
+        radial-gradient(1200px 480px at 15% -5%, rgba(29, 155, 240, 0.18), transparent 65%),
+        radial-gradient(1000px 420px at 85% 0%, rgba(16, 185, 129, 0.12), transparent 60%),
+        var(--xd-bg);
+      min-height: 100vh;
+    }
+
+    /* Marketing Top Nav & Showcase Header */
+    .showcase-nav {
+      max-width: 1440px;
+      margin: 0 auto;
+      padding: 18px 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+    }
+    .showcase-brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 800;
+      font-size: 16px;
+      letter-spacing: -0.02em;
+    }
+    .showcase-brand-badge {
+      padding: 3px 8px;
+      border-radius: 6px;
+      font-family: var(--xd-font-mono);
+      font-size: 11px;
+      background: rgba(29, 155, 240, 0.16);
+      border: 1px solid rgba(29, 155, 240, 0.4);
+      color: #38bdf8;
+    }
+    .showcase-links {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+    }
+    .showcase-links a {
+      color: var(--xd-text-muted);
+      text-decoration: none;
+      font-size: 13px;
+      font-weight: 600;
+      padding: 7px 12px;
+      border-radius: 8px;
+      border: 1px solid transparent;
+    }
+    .showcase-links a:hover {
+      color: var(--xd-text);
+      border-color: var(--xd-border);
+      background: rgba(255, 255, 255, 0.04);
+    }
+    .showcase-links a.cta {
+      background: linear-gradient(135deg, #1d9bf0, #0284c7);
+      color: #fff;
+      border-color: rgba(56, 189, 248, 0.5);
+    }
+
+    .showcase-intro {
+      max-width: 1440px;
+      margin: 0 auto;
+      padding: 28px 24px 12px;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: flex-end;
+      gap: 16px;
+    }
+    .showcase-intro h1 {
+      margin: 0 0 6px;
+      font-size: clamp(24px, 3vw, 34px);
+      font-weight: 800;
+      letter-spacing: -0.03em;
+    }
+    .showcase-intro p {
+      margin: 0;
+      color: var(--xd-text-muted);
+      font-size: 14.5px;
+      max-width: 760px;
+    }
+    .preset-switcher {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+    }
+    .preset-btn {
+      padding: 7px 13px;
+      border-radius: 9px;
+      font-size: 12px;
+      font-weight: 700;
+      font-family: var(--xd-font-mono);
+      cursor: pointer;
+      background: rgba(15, 23, 42, 0.85);
+      border: 1px solid var(--xd-border);
+      color: var(--xd-text-muted);
+      transition: all 0.15s ease;
+    }
+    .preset-btn.active, .preset-btn:hover {
+      color: #fff;
+      border-color: var(--xd-accent-cyan);
+      background: rgba(29, 155, 240, 0.2);
+    }
+
+    /* Embedded Live X Dashboard Styles */
+    .xd-container {
+      max-width: 1440px;
+      margin: 0 auto;
+      padding: 12px 24px 56px;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+    }
+    .xd-hero {
+      position: relative;
+      border-radius: 18px;
+      border: 1px solid var(--xd-border);
+      background: var(--xd-surface);
+      box-shadow: 0 20px 45px rgba(0, 0, 0, 0.48), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+      overflow: hidden;
+    }
+    .xd-hero-banner {
+      position: relative;
+      height: 132px;
+      background:
+        linear-gradient(125deg, rgba(29, 155, 240, 0.34) 0%, rgba(139, 92, 246, 0.26) 48%, rgba(16, 185, 129, 0.28) 100%),
+        repeating-linear-gradient(90deg, rgba(255,255,255,0.03) 0px, rgba(255,255,255,0.03) 1px, transparent 1px, transparent 32px),
+        #0b111e;
+    }
+    .xd-hero-top-pills {
+      position: absolute;
+      top: 14px;
+      left: 18px;
+      right: 18px;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      gap: 10px;
+    }
+    .xd-pill-group { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+    .xd-autolink-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 5px 12px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 600;
+      background: rgba(10, 14, 23, 0.84);
+      border: 1px solid rgba(16, 185, 129, 0.45);
+      color: #d1fae5;
+    }
+    .xd-pulse-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #10b981;
+      box-shadow: 0 0 10px #10b981;
+    }
+    .xd-zero-cost-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 12px;
+      border-radius: 999px;
+      font-size: 11.5px;
+      font-weight: 700;
+      font-family: var(--xd-font-mono);
+      background: rgba(16, 185, 129, 0.16);
+      border: 1px solid rgba(16, 185, 129, 0.45);
+      color: #34d399;
+    }
+    .xd-hero-body {
+      padding: 0 22px 20px;
+      margin-top: -40px;
+      position: relative;
+      z-index: 2;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+    .xd-profile-row {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: flex-end;
+      gap: 16px;
+    }
+    .xd-profile-identity { display: flex; align-items: flex-end; gap: 16px; }
+    .xd-avatar {
+      width: 84px;
+      height: 84px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #1d9bf0, #10b981);
+      padding: 3px;
+      position: relative;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+    }
+    .xd-avatar-inner {
+      width: 100%;
+      height: 100%;
+      border-radius: 50%;
+      background: #0f172a;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 28px;
+      font-weight: 800;
+      color: #38bdf8;
+      border: 2px solid #090d16;
+    }
+    .xd-verified {
+      position: absolute;
+      bottom: 0;
+      right: 0;
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background: #1d9bf0;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 13px;
+      font-weight: 800;
+      border: 2px solid #090d16;
+    }
+    .xd-display-name { margin: 0; font-size: 22px; font-weight: 800; }
+    .xd-handle-link {
+      font-family: var(--xd-font-mono);
+      font-size: 13.5px;
+      color: var(--xd-text-muted);
+      text-decoration: none;
+    }
+    .xd-kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(6, minmax(0, 1fr));
+      gap: 12px;
+    }
+    @media (max-width: 1200px) { .xd-kpi-grid { grid-template-columns: repeat(3, 1fr); } }
+    @media (max-width: 680px) { .xd-kpi-grid { grid-template-columns: repeat(2, 1fr); } }
+    .xd-kpi-card {
+      border-radius: 14px;
+      padding: 14px 16px;
+      background: var(--xd-surface);
+      border: 1px solid var(--xd-border);
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .xd-kpi-top { display: flex; justify-content: space-between; align-items: center; }
+    .xd-kpi-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--xd-text-muted); }
+    .xd-kpi-pill {
+      font-family: var(--xd-font-mono);
+      font-size: 10.5px;
+      font-weight: 700;
+      padding: 2px 7px;
+      border-radius: 999px;
+      background: rgba(56, 189, 248, 0.14);
+      color: #38bdf8;
+      border: 1px solid rgba(56, 189, 248, 0.3);
+    }
+    .xd-kpi-value {
+      font-family: var(--xd-font-mono);
+      font-size: 26px;
+      font-weight: 800;
+      font-variant-numeric: tabular-nums;
+    }
+    .xd-kpi-sub { font-size: 11.5px; color: var(--xd-text-muted); display: flex; justify-content: space-between; }
+
+    .xd-goals-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+    }
+    @media (max-width: 900px) { .xd-goals-grid { grid-template-columns: 1fr; } }
+    .xd-panel {
+      border-radius: 16px;
+      padding: 18px 20px;
+      background: var(--xd-surface);
+      border: 1px solid var(--xd-border);
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .xd-progress-track {
+      height: 10px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.08);
+      overflow: hidden;
+    }
+    .xd-progress-fill {
+      height: 100%;
+      border-radius: 999px;
+      background: linear-gradient(90deg, #1d9bf0, #10b981);
+      transition: width 0.3s ease;
+    }
+    .xd-analytics-grid {
+      display: grid;
+      grid-template-columns: 1.45fr 1fr;
+      gap: 14px;
+    }
+    @media (max-width: 1080px) { .xd-analytics-grid { grid-template-columns: 1fr; } }
+    .xd-chart-hud {
+      padding: 10px 14px;
+      border-radius: 10px;
+      background: rgba(9, 13, 22, 0.85);
+      border: 1px solid var(--xd-border);
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      gap: 10px;
+      font-size: 12px;
+    }
+    .xd-post-card {
+      border-radius: 12px;
+      padding: 14px 16px;
+      background: rgba(11, 15, 25, 0.76);
+      border: 1px solid var(--xd-border);
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .xd-post-metrics {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 14px;
+      font-family: var(--xd-font-mono);
+      font-size: 12px;
+      color: var(--xd-text-muted);
+    }
+    .xd-post-metrics strong { color: var(--xd-text); }
+  </style>
+</head>
+<body>
+  <header class="showcase-nav">
+    <div class="showcase-brand">
+      <span>🪽 Hermes X Dashboard</span>
+      <span class="showcase-brand-badge">v2.0 · Zero-Cost Free Mode</span>
+    </div>
+    <nav class="showcase-links">
+      <a href="https://github.com/omx0r/x-dashboard">GitHub Repo</a>
+      <a href="https://github.com/omx0r/x-dashboard#quick-installation">Install Guide</a>
+      <a href="https://github.com/omx0r/x-dashboard" class="cta">Get Plugin →</a>
+    </nav>
+  </header>
+
+  <section class="showcase-intro">
+    <div>
+      <h1>Creator &amp; Agent Command Center for X</h1>
+      <p>Interactive live preview — click any profile preset or chart bar below to experience X Dashboard v2 in 100% Free Mode ($0.00).</p>
+    </div>
+    <div class="preset-switcher">
+      <button class="preset-btn active" onclick="selectProfile('omx0r')" id="btn-omx0r">@omx0r (Auto-Linked · xurl)</button>
+      <button class="preset-btn" onclick="selectProfile('NousResearch')" id="btn-NousResearch">@NousResearch (Public Free Mode)</button>
+    </div>
+  </section>
+
+  <main class="xd-container">
+    <section class="xd-hero">
+      <div class="xd-hero-banner">
+        <div class="xd-hero-top-pills">
+          <div class="xd-pill-group">
+            <span class="xd-autolink-pill" id="demo-autolink-pill">
+              <span class="xd-pulse-dot"></span>
+              <span id="demo-autolink-text">● Auto-Linked via Hermes (xurl OAuth2 · @omx0r)</span>
+            </span>
+            <span class="xd-zero-cost-badge">⚡ $0.00 Free Mode Active</span>
+          </div>
+          <div class="xd-pill-group">
+            <span class="xd-autolink-pill" style="font-size:11px;">Hermes Web + Desktop Native</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="xd-hero-body">
+        <div class="xd-profile-row">
+          <div class="xd-profile-identity">
+            <div class="xd-avatar">
+              <div class="xd-avatar-inner" id="demo-avatar">O</div>
+              <span class="xd-verified">✓</span>
+            </div>
+            <div>
+              <h2 class="xd-display-name" id="demo-name">Omar 🪽</h2>
+              <a class="xd-handle-link" id="demo-handle" href="https://x.com/omx0r" target="_blank" rel="noreferrer">@omx0r ↗</a>
+            </div>
+          </div>
+          <div class="preset-switcher">
+            <button class="preset-btn active" onclick="triggerRefresh()">↻ Refresh (Free · $0.00)</button>
+            <button class="preset-btn" onclick="triggerV2Sync()">⚡ Sync Official X API v2</button>
+          </div>
+        </div>
+        <p id="demo-bio" style="margin:0;font-size:13.5px;color:#e2e8f0;">
+          Building autonomous AI agents, clinical 3D visualization &amp; open-source Hermes plugins.
+        </p>
+      </div>
+    </section>
+
+    <section class="xd-kpi-grid">
+      <div class="xd-kpi-card">
+        <div class="xd-kpi-top"><span class="xd-kpi-label">Total Followers</span><span class="xd-kpi-pill" id="demo-ratio">3.61x Ratio</span></div>
+        <div class="xd-kpi-value" id="demo-followers">1,480</div>
+        <div class="xd-kpi-sub"><span>+60 vs 7d history</span><span style="color:#38bdf8">▲ 4.2%</span></div>
+      </div>
+      <div class="xd-kpi-card">
+        <div class="xd-kpi-top"><span class="xd-kpi-label">Verified Followers</span><span class="xd-kpi-pill" style="color:#34d399;border-color:rgba(16,185,129,0.35)">v2 Cached</span></div>
+        <div class="xd-kpi-value" id="demo-verified">385</div>
+        <div class="xd-kpi-sub"><span id="demo-verified-pct">26.0% of audience</span><span style="color:#34d399">77% of Goal</span></div>
+      </div>
+      <div class="xd-kpi-card">
+        <div class="xd-kpi-top"><span class="xd-kpi-label">Recent Impressions</span><span class="xd-kpi-pill" id="demo-avg-imp">14.2K / post</span></div>
+        <div class="xd-kpi-value" id="demo-impressions">142.4K</div>
+        <div class="xd-kpi-sub"><span>Across last 10 posts</span><span style="color:#10b981">⚡ High Reach</span></div>
+      </div>
+      <div class="xd-kpi-card">
+        <div class="xd-kpi-top"><span class="xd-kpi-label">Engagement Rate</span><span class="xd-kpi-pill" style="color:#34d399">Elite &gt;3%</span></div>
+        <div class="xd-kpi-value" id="demo-er">4.18%</div>
+        <div class="xd-kpi-sub"><span id="demo-interactions">5,952 interactions</span><span>840 saves</span></div>
+      </div>
+      <div class="xd-kpi-card">
+        <div class="xd-kpi-top"><span class="xd-kpi-label">Posts &amp; Media</span><span class="xd-kpi-pill">34 Listed</span></div>
+        <div class="xd-kpi-value" id="demo-posts">892</div>
+        <div class="xd-kpi-sub"><span>120 media posts</span><span>4,210 likes</span></div>
+      </div>
+      <div class="xd-kpi-card">
+        <div class="xd-kpi-top"><span class="xd-kpi-label">Community Pulse</span><span class="xd-kpi-pill" style="color:#34d399">Active Radar</span></div>
+        <div class="xd-kpi-value" id="demo-mentions">18</div>
+        <div class="xd-kpi-sub"><span>Recent @mentions</span><span>32% reply cadence</span></div>
+      </div>
+    </section>
+
+    <section class="xd-goals-grid">
+      <div class="xd-panel">
+        <div class="xd-kpi-top">
+          <strong>🎯 Monetization Goal 1 · Verified Followers (Target: 500)</strong>
+          <span class="xd-kpi-pill" id="demo-goal1-pct">77.0%</span>
+        </div>
+        <div class="xd-progress-track">
+          <div class="xd-progress-fill" id="demo-goal1-bar" style="width: 77%;"></div>
+        </div>
+        <div class="xd-kpi-sub">
+          <span id="demo-goal1-label">385 / 500 verified followers</span>
+          <span id="demo-goal1-rem">115 remaining</span>
+        </div>
+      </div>
+      <div class="xd-panel">
+        <div class="xd-kpi-top">
+          <strong>🚀 Monetization Goal 2 · Organic Impressions (Target: 500K)</strong>
+          <span class="xd-kpi-pill" id="demo-goal2-pct">28.5%</span>
+        </div>
+        <div class="xd-progress-track">
+          <div class="xd-progress-fill" id="demo-goal2-bar" style="width: 28.5%;"></div>
+        </div>
+        <div class="xd-kpi-sub">
+          <span id="demo-goal2-label">142,400 / 500,000 impressions</span>
+          <span>~25 posts at current velocity</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="xd-analytics-grid">
+      <div class="xd-panel">
+        <div class="xd-kpi-top">
+          <strong>Impressions &amp; Engagement Trajectory (Click any bar to inspect)</strong>
+          <span class="xd-kpi-pill">Interactive SVG</span>
+        </div>
+        <svg viewBox="0 0 680 185" style="width:100%;height:185px;display:block;" id="demo-svg-chart"></svg>
+        <div class="xd-chart-hud" id="demo-chart-hud"></div>
+      </div>
+
+      <div class="xd-panel">
+        <div class="xd-kpi-top">
+          <strong>👑 #1 Top Performing Post Spotlight</strong>
+          <a href="https://x.com/omx0r" target="_blank" rel="noreferrer" style="color:#38bdf8;font-size:12px;text-decoration:none;">Open on X ↗</a>
+        </div>
+        <div class="xd-post-card" id="demo-spotlight">
+          <p style="margin:0;font-size:13.5px;line-height:1.55;" id="demo-spotlight-text">
+            Shipping X Dashboard v2 for @HermesAgent — 100% Free Mode ($0.00) by default, automatic ~/.xurl &amp; XChat account linking, and dual Web + Desktop native UI!
+          </p>
+          <div class="xd-post-metrics" id="demo-spotlight-metrics">
+            <span>👁 <strong>38,400</strong> imp</span>
+            <span>♥ <strong>920</strong> likes</span>
+            <span>↻ <strong>215</strong> reposts</span>
+            <span>💬 <strong>84</strong> replies</span>
+            <span>🔖 <strong>410</strong> saves</span>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const PROFILES = {
+      omx0r: {
+        name: "Omar 🪽",
+        handle: "omx0r",
+        avatar: "O",
+        autolink: "● Auto-Linked via Hermes (xurl OAuth2 · @omx0r)",
+        bio: "Building autonomous AI agents, clinical 3D visualization & open-source Hermes plugins.",
+        followers: "1,480",
+        ratio: "3.61x Ratio",
+        verified: 385,
+        impressions: 142400,
+        impressionsLabel: "142.4K",
+        avgImp: "14.2K / post",
+        er: "4.18%",
+        interactions: "5,952 interactions",
+        postsCount: "892",
+        mentions: "18",
+        posts: [
+          { date: "10-16", imp: 9400, er: 3.4, text: "Designing zero-latency WebGL & R3F medical pipelines." },
+          { date: "10-17", imp: 12800, er: 3.9, text: "Hermes Agent multi-profile orchestration in production." },
+          { date: "10-18", imp: 8900, er: 3.1, text: "Why every developer tool needs a $0.00 local-first telemetry mode." },
+          { date: "10-19", imp: 18500, er: 4.5, text: "Hermes Desktop + Web Dashboard unified plugin SDK architecture." },
+          { date: "10-20", imp: 15200, er: 4.0, text: "Automating creator growth tracking without burning API tokens." },
+          { date: "10-21", imp: 11400, er: 3.8, text: "Testing real-time mention radar with Hermes x_search." },
+          { date: "10-22", imp: 27800, er: 4.7, text: "Previewing Xenia dark-first glassmorphism bento cards." },
+          { date: "10-23", imp: 38400, er: 5.2, text: "Shipping X Dashboard v2 for @HermesAgent — 100% Free Mode ($0.00) by default!" }
+        ]
+      },
+      NousResearch: {
+        name: "Nous Research",
+        handle: "NousResearch",
+        avatar: "N",
+        autolink: "● Public Free Mode (@NousResearch · $0.00)",
+        bio: "Open-source AI research lab building Hermes Agent, Hermes 3, and frontier autonomous systems.",
+        followers: "168,400",
+        ratio: "142.5x Ratio",
+        verified: 500,
+        impressions: 485000,
+        impressionsLabel: "485.0K",
+        avgImp: "60.6K / post",
+        er: "4.85%",
+        interactions: "23,520 interactions",
+        postsCount: "3,410",
+        mentions: "94",
+        posts: [
+          { date: "10-16", imp: 42000, er: 4.2, text: "Hermes Agent skill ecosystem & self-improving memory." },
+          { date: "10-17", imp: 58000, er: 4.6, text: "Community plugins for Hermes Web Dashboard & Desktop." },
+          { date: "10-18", imp: 51000, er: 4.4, text: "Tool-calling benchmarks and subagent delegation patterns." },
+          { date: "10-19", imp: 64000, er: 4.9, text: "Introducing faster local workflows with Hermes Desktop." },
+          { date: "10-20", imp: 49000, er: 4.3, text: "Open-source agentic telemetry and community plugins." },
+          { date: "10-21", imp: 68000, er: 5.1, text: "Hermes Agent docs & community showcase updates." },
+          { date: "10-22", imp: 71000, er: 5.3, text: "Zero-config agent plugins that respect user API budgets." },
+          { date: "10-23", imp: 82000, er: 5.6, text: "Hermes Agent v2 plugin ecosystem is live!" }
+        ]
+      }
+    };
+
+    let currentKey = "omx0r";
+    let selectedBar = 7;
+
+    function renderChart() {
+      const p = PROFILES[currentKey];
+      const svg = document.getElementById("demo-svg-chart");
+      const maxImp = Math.max(...p.posts.map(x => x.imp));
+      const slotW = 640 / p.posts.length;
+      const barW = 38;
+      let html = "";
+      p.posts.forEach((item, idx) => {
+        const x = 20 + idx * slotW + (slotW - barW) / 2;
+        const h = Math.max(12, (item.imp / maxImp) * 135);
+        const y = 155 - h;
+        const fill = idx === selectedBar ? "#10b981" : "#1d9bf0";
+        html += `<g style="cursor:pointer" onclick="selectBar(${idx})">
+          <rect x="${x}" y="${y}" width="${barW}" height="${h}" rx="5" fill="${fill}" opacity="${idx === selectedBar ? 1 : 0.78}" />
+          <text x="${x + barW/2}" y="174" text-anchor="middle" fill="#94a3b8" font-size="10" font-family="monospace">${item.date}</text>
+        </g>`;
+      });
+      svg.innerHTML = html;
+      const active = p.posts[selectedBar] || p.posts[p.posts.length - 1];
+      document.getElementById("demo-chart-hud").innerHTML =
+        `<span><strong>${active.date}:</strong> ${active.text}</span>
+         <span style="font-family:monospace;color:#38bdf8;">👁 ${active.imp.toLocaleString()} imp · ⚡ ${active.er}% ER</span>`;
+    }
+
+    function selectBar(idx) {
+      selectedBar = idx;
+      renderChart();
+    }
+
+    function selectProfile(key) {
+      currentKey = key;
+      selectedBar = PROFILES[key].posts.length - 1;
+      document.getElementById("btn-omx0r").classList.toggle("active", key === "omx0r");
+      document.getElementById("btn-NousResearch").classList.toggle("active", key === "NousResearch");
+      const p = PROFILES[key];
+      document.getElementById("demo-avatar").textContent = p.avatar;
+      document.getElementById("demo-name").textContent = p.name;
+      document.getElementById("demo-handle").textContent = "@" + p.handle + " ↗";
+      document.getElementById("demo-handle").href = "https://x.com/" + p.handle;
+      document.getElementById("demo-autolink-text").textContent = p.autolink;
+      document.getElementById("demo-bio").textContent = p.bio;
+      document.getElementById("demo-followers").textContent = p.followers;
+      document.getElementById("demo-ratio").textContent = p.ratio;
+      document.getElementById("demo-verified").textContent = p.verified.toLocaleString();
+      document.getElementById("demo-impressions").textContent = p.impressionsLabel;
+      document.getElementById("demo-avg-imp").textContent = p.avgImp;
+      document.getElementById("demo-er").textContent = p.er;
+      document.getElementById("demo-interactions").textContent = p.interactions;
+      document.getElementById("demo-posts").textContent = p.postsCount;
+      document.getElementById("demo-mentions").textContent = p.mentions;
+
+      const g1Pct = Math.min(100, Math.round((p.verified / 500) * 100));
+      document.getElementById("demo-goal1-pct").textContent = g1Pct + "%";
+      document.getElementById("demo-goal1-bar").style.width = g1Pct + "%";
+      document.getElementById("demo-goal1-label").textContent = `${p.verified} / 500 verified followers`;
+      document.getElementById("demo-goal1-rem").textContent = `${Math.max(0, 500 - p.verified)} remaining`;
+
+      const g2Pct = Math.min(100, ((p.impressions / 500000) * 100).toFixed(1));
+      document.getElementById("demo-goal2-pct").textContent = g2Pct + "%";
+      document.getElementById("demo-goal2-bar").style.width = g2Pct + "%";
+      document.getElementById("demo-goal2-label").textContent = `${p.impressions.toLocaleString()} / 500,000 impressions`;
+
+      renderChart();
+    }
+
+    function triggerRefresh() {
+      const el = document.getElementById("demo-autolink-text");
+      const prev = el.textContent;
+      el.textContent = "↻ Synced Free Public & Cached Telemetry ($0.00 spent)";
+      setTimeout(() => { el.textContent = prev; }, 2200);
+    }
+
+    function triggerV2Sync() {
+      const el = document.getElementById("demo-autolink-text");
+      const prev = el.textContent;
+      el.textContent = "⚡ Verified Followers Synced via Local Hermes xurl OAuth2";
+      setTimeout(() => { el.textContent = prev; }, 2400);
+    }
+
+    renderChart();
+  </script>
+</body>
+</html>

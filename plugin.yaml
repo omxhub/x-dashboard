@@ -1,0 +1,10 @@
+# Hermes agent-plugin manifest.
+#
+# The web dashboard discovers this plugin via dashboard/manifest.json; this
+# file exists so the panel's "Install from GitHub" pins the install folder
+# name (`x-dashboard`) regardless of the GitHub repository name.
+name: x-dashboard
+label: X Dashboard
+description: Zero-cost & auto-linked X analytics dashboard for Hermes Desktop and Web.
+version: 0.2.0
+manifest_version: 1
