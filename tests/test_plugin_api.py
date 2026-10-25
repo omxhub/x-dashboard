@@ -7,11 +7,40 @@ import os
 from pathlib import Path
 import sys
 import tempfile
+import types
 import unittest
 from unittest.mock import MagicMock, patch
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO_ROOT / "dashboard"))
+
+# Provide lightweight standalone shims when running outside the Hermes runtime (e.g. GitHub Actions CI)
+try:
+    import agent.secret_scope  # noqa: F401
+except ModuleNotFoundError:
+    agent_mod = types.ModuleType("agent")
+    secret_scope_mod = types.ModuleType("agent.secret_scope")
+    secret_scope_mod.get_secret = lambda name, default=None: os.environ.get(name, default)  # type: ignore[attr-defined]
+    agent_mod.secret_scope = secret_scope_mod  # type: ignore[attr-defined]
+    sys.modules["agent"] = agent_mod
+    sys.modules["agent.secret_scope"] = secret_scope_mod
+
+try:
+    import plugins.plugin_storage  # noqa: F401
+except ModuleNotFoundError:
+    plugins_mod = types.ModuleType("plugins")
+    plugin_storage_mod = types.ModuleType("plugins.plugin_storage")
+
+    def _stub_plugin_data_dir(plugin_name: str) -> Path:
+        base = Path(os.environ.get("HERMES_HOME") or (Path.home() / ".hermes"))
+        d = base / "plugin-data" / plugin_name
+        d.mkdir(parents=True, exist_ok=True)
+        return d
+
+    plugin_storage_mod.plugin_data_dir = _stub_plugin_data_dir  # type: ignore[attr-defined]
+    plugins_mod.plugin_storage = plugin_storage_mod  # type: ignore[attr-defined]
+    sys.modules["plugins"] = plugins_mod
+    sys.modules["plugins.plugin_storage"] = plugin_storage_mod
 
 import plugin_api  # noqa: E402
 
@@ -117,9 +146,7 @@ class PluginApiTestCase(unittest.TestCase):
             os.environ,
             {
                 "HERMES_HOME": str(self.hermes_home),
-                "XCHAT_ACCESS_TOKEN": "secret_access_token_value_123",
-                "XCHAT_REFRESH_TOKEN": "secret_refresh_token_value_456",
-                "XCHAT_CLIENT_SECRET": "secret_client_value_789",
+                "X_BEARER_TOKEN": "secret_bearer_token_value_123",
             },
             clear=False,
         )
@@ -147,7 +174,7 @@ class PluginApiTestCase(unittest.TestCase):
             "client_secret": "sec_789",
             "nested": {
                 "xchat_access_token": "tok_nested",
-                "message": "Header had Bearer secret_jwt_token_here.abc.def in it",
+                "message": "Header had Bearer secret_jwt_token_here in it",
             },
         }
         clean = plugin_api._scrub_secrets(dirty)
@@ -178,11 +205,10 @@ class PluginApiTestCase(unittest.TestCase):
         self.assertEqual(status["handle"], "omx0r")
         self.assertEqual(status["active_source"], "xurl")
         self.assertEqual(status["cost_policy"], "zero_cost_free_default")
+        self.assertFalse(status["x_search_enabled"])
 
         serialized = json.dumps(status)
-        self.assertNotIn("secret_access_token_value_123", serialized)
-        self.assertNotIn("secret_refresh_token_value_456", serialized)
-        self.assertNotIn("secret_client_value_789", serialized)
+        self.assertNotIn("secret_bearer_token_value_123", serialized)
 
     @patch.object(plugin_api, "_get_xurl_auth_info")
     def test_config_persistence_and_goal_updates(self, mock_xurl: MagicMock) -> None:
@@ -198,22 +224,26 @@ class PluginApiTestCase(unittest.TestCase):
             {
                 "handle": "@NousResearch",
                 "mode": "free",
+                "enable_x_search": True,
                 "goals": {"verified_followers": 1000, "impressions": 1000000},
             }
         )
         self.assertTrue(res["ok"])
         self.assertEqual(res["config"]["handle"], "NousResearch")
         self.assertEqual(res["config"]["default_mode"], "free")
+        self.assertTrue(res["config"]["enable_x_search"])
         self.assertEqual(res["config"]["goals"]["verified_followers"], 1000)
         self.assertEqual(res["config"]["goals"]["impressions"], 1000000)
 
     @patch.object(plugin_api.requests, "get")
+    @patch.object(plugin_api, "_check_x_search_available", return_value=True)
     @patch.object(plugin_api, "_run_x_search_query")
     @patch.object(plugin_api, "_get_xurl_auth_info")
     def test_summary_free_mode_normalization_and_snapshot_history(
         self,
         mock_xurl: MagicMock,
         mock_xsearch: MagicMock,
+        _mock_xsearch_avail: MagicMock,
         mock_requests_get: MagicMock,
     ) -> None:
         mock_xurl.return_value = {
@@ -255,6 +285,13 @@ class PluginApiTestCase(unittest.TestCase):
 
         mock_requests_get.side_effect = fake_get
 
+        # By default enable_x_search is False so paid x_search is not invoked
+        default_summary = plugin_api.summary(handle="omx0r", mode="free", refresh=True)
+        self.assertTrue(default_summary["ok"])
+        mock_xsearch.assert_not_called()
+
+        # Opting in via enable_x_search=True enables x_search enrichment
+        plugin_api.update_config({"enable_x_search": True})
         summary = plugin_api.summary(handle="omx0r", mode="free", refresh=True)
         self.assertTrue(summary["ok"])
         self.assertEqual(summary["cost_incurred"], "$0.00")

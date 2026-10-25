@@ -68,17 +68,17 @@ const MOCK_SUMMARY_V2 = {
     auth_sources: [
       {
         id: "xurl",
-        label: "Hermes xurl OAuth2 (~/.xurl)",
+        label: "xurl CLI (`xurl auth status`)",
         detected: true,
         handle: "omx0r",
-        detail: "Auto-linked from ~/.xurl",
+        detail: "Linked via xurl auth status",
       },
       {
-        id: "xchat",
-        label: "Hermes XChat Bridge",
+        id: "x_bearer",
+        label: "X API v2 Bearer Token (`X_BEARER_TOKEN`)",
         detected: true,
         handle: "omx0r",
-        detail: "XCHAT_ACCESS_TOKEN active",
+        detail: "Scoped X_BEARER_TOKEN configured",
       },
       {
         id: "public_free",
@@ -137,7 +137,7 @@ const MOCK_SUMMARY_V2 = {
       },
       {
         id: "p2",
-        text: "Auto-detecting ~/.xurl and XChat credentials with $0.00 default refreshes.",
+        text: "Scoped Hermes handle resolution and $0.00 default refreshes.",
         created_at: "2026-10-22T18:10:00Z",
         impressions: 12300,
         likes: 290,
@@ -276,7 +276,7 @@ test("Web Dashboard XDashboardPage renders auto-linked profile, $0.00 Free Mode 
   click(connectionTab);
   await settle(10);
   assert.ok(
-    (container.textContent || "").includes("Hermes xurl OAuth2"),
+    (container.textContent || "").includes("xurl CLI"),
     "Connection tab must list detected Hermes auth sources",
   );
 

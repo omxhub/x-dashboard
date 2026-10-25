@@ -1478,7 +1478,7 @@ export default function XDashboardPage() {
                 </div>
                 <p className="xd-post-text" style={{ color: "var(--xd-text-muted)" }}>
                   {status?.cost_policy ||
-                    "X Dashboard automatically links your existing Hermes X credentials (~/.xurl, XCHAT_ACCESS_TOKEN, or public handle) and defaults to 100% Free Mode so routine dashboard refreshes never burn paid X API credits."}
+                    "X Dashboard resolves your configured handle via Hermes plugin settings, X_DASHBOARD_HANDLE, xurl CLI, or any public @handle, and defaults to 100% Free Mode ($0.00) so routine dashboard refreshes never burn paid X API or xAI credits."}
                 </p>
               </div>
             </div>

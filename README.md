@@ -1,7 +1,7 @@
 # X Dashboard — Zero-Cost Creator & Agent Command Center for Hermes
 
 <p align="center">
-  <strong>100% Free Mode ($0.00) by default · Automatic Hermes X Account Detection (<code>xurl</code> / <code>xchat</code> / Public Handle) · Dual Web Dashboard &amp; Hermes Desktop Native Plugin</strong>
+  <strong>100% Free Mode ($0.00) by default · Scoped Hermes X Account Detection (<code>X_DASHBOARD_HANDLE</code> / <code>xurl</code> / Public Handle) · Dual Web Dashboard &amp; Hermes Desktop Native Plugin</strong>
 </p>
 
 <p align="center">
@@ -20,8 +20,8 @@
 
 Most X/Twitter analytics tools either lock creators behind expensive monthly SaaS subscriptions or burn paid X API credits on every page refresh. **X Dashboard** is engineered specifically for the **Hermes Agent** ecosystem:
 
-1. **⚡ 100% Free Mode ($0.00) by Default**: Routine refreshes use zero-cost public syndication, Nitter/guest-token telemetry, and local snapshot caching so viewing your dashboard **never burns X API credits**.
-2. **🔗 Zero-Friction Hermes Auto-Link**: Automatically detects your connected X identity from your local Hermes environment (`~/.xurl` OAuth2 tokens, `XCHAT_ACCESS_TOKEN`, `~/.hermes/xchat`, or `x_search`) or lets you type **any public `@handle`** immediately with **zero API keys required** (defaults to `@NousResearch` out of the box when no local account is linked).
+1. **⚡ 100% Free Mode ($0.00) by Default**: Routine refreshes use zero-cost public syndication (`api.fxtwitter.com` / `api.vxtwitter.com`), Jina Reader timeline discovery (`r.jina.ai`), and local snapshot caching (`<hermes_home>/plugin-data/x-dashboard/`) so viewing your dashboard **never burns X API or xAI credits**. Additional post and mention discovery via Hermes's paid `x_search` tool is strictly opt-in (`enable_x_search: true`, default `false`).
+2. **🔗 Scoped Hermes Account Resolution**: Automatically resolves your X handle from dashboard settings (`<hermes_home>/plugin-data/x-dashboard/config.json` or `plugins.entries.x-dashboard.settings`), Hermes-scoped `X_DASHBOARD_HANDLE`, or `xurl auth status` (when `xurl` is installed on `PATH`), or lets you type **any public `@handle`** immediately with **zero API keys required** (defaults to `@NousResearch` out of the box when no handle is configured).
 3. **🖥️ Dual-Host Native Architecture**: Ships both the **Hermes Web Dashboard IIFE bundle** (`dashboard/dist/index.js`) and the **Hermes Desktop ESM plugin** (`desktop/plugin.js`) from a single TypeScript + React codebase — prebuilt and committed so installs never need to run a build step.
 4. **📊 Bespoke Interactive SVG Visual Analytics**:
    - **6-Card Executive KPI Bento Grid** with live follower/following ratios, history sparklines, engagement quality tiers (`Elite >3%`, `Strong >1.5%`, `Steady`), and community pulse metrics.
@@ -37,12 +37,14 @@ When X Dashboard loads, the backend (`dashboard/plugin_api.py`) resolves your ac
 
 | Priority | Source | How It Works | Default Refresh Cost |
 | :--- | :--- | :--- | :--- |
-| **1** | **Dashboard Config / Query** | Saved `@handle` in `~/.hermes/cache/x-dashboard/config.json` or live handle switcher input | **$0.00** (Free Mode) |
-| **2** | **Hermes `xurl` OAuth2 (`~/.xurl`)** | Reads your local `xurl` profile/token automatically if installed | **$0.00** (Cached / Free Mode) · Optional on-demand X API sync |
-| **3** | **Hermes XChat (`XCHAT_ACCESS_TOKEN`)** | Detects active Hermes XChat credentials in environment or `~/.hermes/xchat` | **$0.00** (Cached / Free Mode) |
+| **1** | **Dashboard Config / Query** | Saved `@handle` in `<hermes_home>/plugin-data/x-dashboard/config.json`, `plugins.entries.x-dashboard.settings.handle`, or live handle switcher input | **$0.00** (Free Mode) |
+| **2** | **Hermes Scoped Env (`X_DASHBOARD_HANDLE`)** | Resolves `X_DASHBOARD_HANDLE` via `agent.secret_scope.get_secret` | **$0.00** (Free Mode) |
+| **3** | **`xurl` CLI (`xurl auth status`)** | Queries `xurl auth status` if the `xurl` CLI is installed on `PATH` | **$0.00** (Cached / Free Mode) · Optional on-demand X API sync |
 | **4** | **Public Handle Mode (`@any_handle`)** | Works out-of-the-box for any X creator or agent handle with zero keys | **$0.00** (100% Free) |
 
-> **On-Demand Official X API Sync**: Want to refresh `verified_followers_count` or owned non-public metrics from the official X API? Click **⚡ Sync Official X API** in the header anytime—paid calls only happen when you explicitly request them.
+> **Opt-In Paid Capabilities**:
+> - **Live X API v2 Sync (`X_BEARER_TOKEN` / `xurl`)**: Click **⚡ Sync Official X API** in the header (or select `live_v2` mode) to query `https://api.x.com/2/...` using your scoped `X_BEARER_TOKEN` or `xurl` CLI.
+> - **Hermes xAI `x_search` Enrichment (`enable_x_search`)**: Disabled (`false`) by default so Free Mode stays strictly `$0.00`. Set `enable_x_search: true` in plugin settings to include `x_search` post and mention citation discovery when `XAI_API_KEY` is configured.
 
 ---
 

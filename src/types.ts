@@ -305,17 +305,17 @@ export function normalizeSummaryPayload(raw: XSummaryPayload): NormalizedXDashbo
   const defaultAuthSources: XAuthSource[] = [
     {
       id: "xurl",
-      label: "Hermes xurl OAuth2 (~/.xurl)",
+      label: "xurl CLI (`xurl auth status`)",
       detected: Boolean(rawStatus.xurl_available),
       handle: rawStatus.xurl_available ? handle : undefined,
-      detail: rawStatus.xurl_available ? "Local OAuth2 token linked" : "Not detected on host",
+      detail: rawStatus.xurl_available ? "xurl CLI session linked" : "Not detected on PATH",
     },
     {
-      id: "xchat",
-      label: "Hermes XChat Bridge",
+      id: "x_bearer",
+      label: "X API v2 Bearer Token (`X_BEARER_TOKEN`)",
       detected: Boolean(rawStatus.xchat_configured),
       handle: rawStatus.xchat_configured ? handle : undefined,
-      detail: rawStatus.xchat_configured ? "XCHAT_ACCESS_TOKEN active" : "No XChat session configured",
+      detail: rawStatus.xchat_configured ? "Scoped X_BEARER_TOKEN configured" : "Not configured",
     },
     {
       id: "public_free",

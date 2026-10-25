@@ -2,13 +2,14 @@
 
 Features:
 - Zero secret leakage: never exposes access tokens, refresh tokens, client secrets, or raw bearer tokens.
-- Auto-detection of Hermes-linked X accounts (`~/.hermes/.env`, `~/.hermes/xchat/registration.json`,
-  `xurl auth status`, `~/.hermes/memories/USER.md`, and `~/.hermes/cache/x-dashboard/config.json`).
-- 100% Free Mode ($0.00 default): public syndication (`api.fxtwitter.com` / `api.vxtwitter.com`),
-  Jina Reader timeline discovery (`r.jina.ai`), and Hermes `x_search_tool` citation enrichment.
-- Optional `live_v2` mode via `XCHAT_ACCESS_TOKEN` or `xurl` OAuth2 with automatic fallback to Free Mode
+- Scoped Hermes configuration & handle resolution (`plugins.entries.x-dashboard.settings`, `X_DASHBOARD_HANDLE`
+  via `agent.secret_scope.get_secret`, `xurl auth status` when `xurl` is installed on PATH, and
+  `<hermes_home>/plugin-data/x-dashboard/config.json`).
+- 100% Free Mode ($0.00 default): public syndication (`api.fxtwitter.com` / `api.vxtwitter.com`) and
+  Jina Reader timeline discovery (`r.jina.ai`), with opt-in `x_search` citation enrichment (`enable_x_search: false` by default).
+- Optional `live_v2` mode via `X_BEARER_TOKEN` or `xurl` CLI with automatic fallback to Free Mode
   if X API v2 credits are depleted (402) or rate-limited (429).
-- Persistent snapshot & 90-point historical time-series cache (`~/.hermes/cache/x-dashboard/snapshot_<handle>.json`).
+- Persistent snapshot & 90-point historical time-series cache (`<hermes_home>/plugin-data/x-dashboard/snapshot_<handle>.json`).
 """
 
 from __future__ import annotations
@@ -18,17 +19,17 @@ from datetime import datetime, timezone
 from email.utils import parsedate_to_datetime
 import json
 import logging
-import os
 from pathlib import Path
 import re
 import shutil
 import subprocess
-import sys
 import threading
 import time
 from typing import Any
 
 import requests
+from agent.secret_scope import get_secret
+from plugins.plugin_storage import plugin_data_dir
 
 try:
     from fastapi import APIRouter, Body
@@ -128,42 +129,8 @@ def _scrub_secrets(obj: Any) -> Any:
 # ---------------------------------------------------------------------------
 
 
-def _get_hermes_home() -> Path:
-    env_home = (os.environ.get("HERMES_HOME") or "").strip()
-    if env_home:
-        return Path(env_home)
-    try:
-        from hermes_constants import get_hermes_home
-        return Path(get_hermes_home())
-    except Exception:
-        pass
-    if sys.platform == "win32":
-        local_app_data = os.environ.get("LOCALAPPDATA")
-        if local_app_data:
-            candidate = Path(local_app_data) / "hermes"
-            if candidate.exists():
-                return candidate
-    return Path.home() / ".hermes"
-
-
-def _candidate_hermes_dirs() -> list[Path]:
-    primary = _get_hermes_home()
-    dirs = [primary]
-    if not (os.environ.get("HERMES_HOME") or "").strip():
-        dot_home = Path.home() / ".hermes"
-        if dot_home not in dirs and dot_home.exists():
-            dirs.append(dot_home)
-    return dirs
-
-
 def _cache_dir() -> Path:
-    try:
-        from plugins.plugin_storage import plugin_data_dir
-        return Path(plugin_data_dir("x-dashboard"))
-    except Exception:
-        d = _get_hermes_home() / "plugin-data" / "x-dashboard"
-        d.mkdir(parents=True, exist_ok=True)
-        return d
+    return Path(plugin_data_dir("x-dashboard"))
 
 
 def _config_path() -> Path:
@@ -209,6 +176,14 @@ def _load_hermes_plugin_settings() -> dict[str, Any]:
     return {}
 
 
+def _coerce_bool(val: Any, default: bool = False) -> bool:
+    if isinstance(val, bool):
+        return val
+    if val is None:
+        return default
+    return str(val).strip().lower() in ("true", "1", "yes", "on")
+
+
 def _load_dashboard_config() -> dict[str, Any]:
     raw = _read_json_file(_config_path())
     settings = _load_hermes_plugin_settings()
@@ -221,10 +196,15 @@ def _load_dashboard_config() -> dict[str, Any]:
     if mode not in VALID_MODES:
         mode = "auto"
     handle = _sanitize_Handle(raw.get("handle") or settings.get("handle"))
+    enable_x_search = _coerce_bool(
+        raw["enable_x_search"] if "enable_x_search" in raw else settings.get("enable_x_search"),
+        default=False,
+    )
     return {
         "handle": handle,
         "default_mode": mode,
         "mode": mode,
+        "enable_x_search": enable_x_search,
         "goals": goals,
         "updated_at": raw.get("updated_at"),
     }
@@ -243,6 +223,8 @@ def _save_dashboard_config(update: dict[str, Any]) -> dict[str, Any]:
         if m in VALID_MODES:
             current["default_mode"] = m
             current["mode"] = m
+    if "enable_x_search" in update and update["enable_x_search"] is not None:
+        current["enable_x_search"] = _coerce_bool(update["enable_x_search"], default=False)
     if isinstance(update.get("goals"), dict):
         g = update["goals"]
         if g.get("verified_followers") is not None:
@@ -266,30 +248,16 @@ def _save_dashboard_config(update: dict[str, Any]) -> dict[str, Any]:
 
 
 def _get_scoped_env(name: str) -> str:
-    """Resolve an environment/secret value via Hermes's public secret_scope or os.environ."""
-    try:
-        from agent.secret_scope import get_secret
-        val = get_secret(name)
-        if val is not None and str(val).strip():
-            return str(val).strip()
-    except Exception:
-        pass
-    val = os.environ.get(name)
-    return val.strip() if val is not None and val.strip() else ""
+    """Resolve a declared environment/secret value strictly via Hermes's secret_scope."""
+    val = get_secret(name)
+    return str(val).strip() if val is not None and str(val).strip() else ""
 
 
 def _read_env_vars() -> dict[str, str]:
-    """Read declared X env vars via Hermes secret_scope / os.environ (never returned raw to callers)."""
+    """Read declared X Dashboard env vars via Hermes secret_scope (never returned raw to callers)."""
     merged: dict[str, str] = {}
     tracked_keys = (
         "X_DASHBOARD_HANDLE",
-        "X_DASHBOARD_USER",
-        "X_DASHBOARD_APP",
-        "X_ANALYTICS_USER",
-        "X_ANALYTICS_APP",
-        "XCHAT_HANDLE",
-        "XCHAT_ACCESS_TOKEN",
-        "XCHAT_USER_ID",
         "X_BEARER_TOKEN",
         "XAI_API_KEY",
     )
@@ -302,15 +270,7 @@ def _read_env_vars() -> dict[str, str]:
 
 def _resolve_xurl_binary() -> tuple[str | None, str | None]:
     """Return (executable, optional_cli_js_arg) or (None, None) if xurl is not installed."""
-    env_bin = _get_scoped_env("XURL_BIN")
-    if env_bin:
-        p = Path(env_bin)
-        if p.exists() or shutil.which(env_bin):
-            return env_bin, None
-
     found = shutil.which("xurl")
-    if found and not found.lower().endswith(".cmd"):
-        return found, None
     if found:
         return found, None
     return None, None
@@ -457,31 +417,29 @@ def _check_x_search_available() -> bool:
     return bool(_get_scoped_env("XAI_API_KEY"))
 
 
+def _is_x_search_enabled() -> bool:
+    """Paid xAI x_search calls are strictly opt-in via `enable_x_search: true`."""
+    return bool(_load_dashboard_config().get("enable_x_search")) and _check_x_search_available()
+
+
 def _detect_connection(requested_handle: str | None = None, requested_mode: str | None = None) -> dict[str, Any]:
     """Auto-discover Hermes-linked X accounts and auth capabilities without exposing secrets."""
     env_vars = _read_env_vars()
     cfg = _load_dashboard_config()
     xurl_info = _get_xurl_auth_info()
     x_search_avail = _check_x_search_available()
+    x_search_enabled = bool(cfg.get("enable_x_search")) and x_search_avail
+    has_bearer_token = bool(env_vars.get("X_BEARER_TOKEN"))
 
     # 1. Environment handle
-    env_handle = _sanitize_Handle(
-        env_vars.get("X_DASHBOARD_HANDLE")
-        or env_vars.get("X_DASHBOARD_USER")
-        or env_vars.get("X_ANALYTICS_USER")
-    )
+    env_handle = _sanitize_Handle(env_vars.get("X_DASHBOARD_HANDLE"))
 
-    # 2. XChat env
-    xchat_handle = _sanitize_Handle(env_vars.get("XCHAT_HANDLE"))
-    xchat_user_id = str(env_vars.get("XCHAT_USER_ID") or "").strip()
-    xchat_configured = bool(env_vars.get("XCHAT_ACCESS_TOKEN") or xchat_handle or xchat_user_id)
-
-    # 3. xurl CLI OAuth2 handle
+    # 2. xurl CLI OAuth2 handle
     xurl_handle = _sanitize_Handle(xurl_info.get("primary_handle"))
     xurl_available = bool(xurl_info.get("available"))
     xurl_oauth_linked = bool(xurl_handle)
 
-    # 4. Config handle
+    # 3. Config handle
     cfg_handle = _sanitize_Handle(cfg.get("handle"))
 
     # Collect all available handles in priority order
@@ -490,7 +448,6 @@ def _detect_connection(requested_handle: str | None = None, requested_mode: str 
         _sanitize_Handle(requested_handle),
         cfg_handle,
         env_handle,
-        xchat_handle,
         xurl_handle,
         *(xurl_info.get("handles") or []),
     ):
@@ -512,7 +469,6 @@ def _detect_connection(requested_handle: str | None = None, requested_mode: str 
         _sanitize_Handle(requested_handle)
         or cfg_handle
         or env_handle
-        or xchat_handle
         or xurl_handle
         or (available_handles[0] if available_handles else "NousResearch")
     )
@@ -523,7 +479,7 @@ def _detect_connection(requested_handle: str | None = None, requested_mode: str 
     auth_sources = [
         {
             "id": "xurl",
-            "label": "Hermes xurl OAuth2 (~/.xurl)",
+            "label": "xurl CLI (`xurl auth status`)",
             "detected": xurl_oauth_linked or (xurl_available and bool(xurl_info.get("has_bearer"))),
             "handle": xurl_handle or (active_handle if xurl_oauth_linked else None),
             "app": xurl_info.get("default_app"),
@@ -534,23 +490,26 @@ def _detect_connection(requested_handle: str | None = None, requested_mode: str 
             ),
         },
         {
-            "id": "xchat",
-            "label": "Hermes XChat Bridge",
-            "detected": xchat_configured,
-            "handle": xchat_handle or (active_handle if xchat_configured else None),
-            "user_id": xchat_user_id or None,
-            "detail": (
-                f"XChat configured (user_id {xchat_user_id})"
-                if xchat_configured and xchat_user_id
-                else ("XChat OAuth2 token present" if xchat_configured else "Not configured")
-            ),
+            "id": "x_bearer",
+            "label": "X API v2 Bearer Token (`X_BEARER_TOKEN`)",
+            "detected": has_bearer_token,
+            "handle": active_handle if has_bearer_token else None,
+            "detail": "Scoped X_BEARER_TOKEN configured for on-demand Live API v2" if has_bearer_token else "Not configured",
         },
         {
             "id": "x_search",
-            "label": "Hermes xAI X Search",
-            "detected": x_search_avail,
-            "handle": active_handle if x_search_avail else None,
-            "detail": "Zero-X-cost post & mention citation discovery active" if x_search_avail else "Unavailable",
+            "label": "Hermes xAI X Search (Opt-In)",
+            "detected": x_search_enabled,
+            "handle": active_handle if x_search_enabled else None,
+            "detail": (
+                "Opt-in xAI citation discovery enabled (paid xAI tool)"
+                if x_search_enabled
+                else (
+                    "Available (opt-in disabled by default; set enable_x_search=true to use)"
+                    if x_search_avail
+                    else "Unavailable"
+                )
+            ),
         },
         {
             "id": "public_free",
@@ -561,13 +520,13 @@ def _detect_connection(requested_handle: str | None = None, requested_mode: str 
         },
     ]
 
-    auto_linked = bool(env_handle or xchat_configured or xurl_oauth_linked)
+    auto_linked = bool(env_handle or xurl_oauth_linked or has_bearer_token)
     if xurl_oauth_linked:
         active_source = "xurl"
-    elif xchat_configured:
-        active_source = "xchat"
     elif env_handle:
         active_source = "env"
+    elif has_bearer_token:
+        active_source = "x_bearer"
     else:
         active_source = "public_free"
 
@@ -587,9 +546,10 @@ def _detect_connection(requested_handle: str | None = None, requested_mode: str 
         "handle": active_handle,
         "available_handles": available_handles,
         "x_search_available": x_search_avail,
+        "x_search_enabled": x_search_enabled,
         "xurl_available": xurl_available,
         "xurl_app": xurl_info.get("default_app"),
-        "xchat_configured": xchat_configured,
+        "xchat_configured": False,
         "mode": mode,
         "cost_policy": "zero_cost_free_default",
         "goals": cfg.get("goals") or dict(DEFAULT_GOALS),
@@ -1056,11 +1016,11 @@ def _run_x_search_query(
     allowed_x_handles: list[str] | None = None,
     excluded_x_handles: list[str] | None = None,
 ) -> dict[str, Any]:
-    """Call Hermes's registered `x_search` tool via public `tools.registry`, with cooldown on 402/429."""
+    """Call Hermes's registered `x_search` tool via public `tools.registry` when explicitly opted in."""
     global _x_search_cooldown_until
     if time.time() < _x_search_cooldown_until:
         return {}
-    if not _check_x_search_available():
+    if not _is_x_search_enabled():
         return {}
     try:
         from tools.registry import registry
@@ -1132,14 +1092,18 @@ def _fetch_posts_free(
     limit: int = 20,
     cached_posts: list[dict[str, Any]] | None = None,
 ) -> tuple[list[dict[str, Any]], dict[str, Any] | None]:
-    """Fetch recent posts for `handle` at $0.00 X API cost via Jina + x_search + FxTwitter."""
+    """Fetch recent posts for `handle` at $0.00 X API cost via Jina + FxTwitter (plus opt-in x_search)."""
     limit = max(1, min(int(limit or 20), 50))
 
-    with concurrent.futures.ThreadPoolExecutor(max_workers=2) as pool:
-        fut_jina = pool.submit(_discover_post_ids_jina, handle)
-        fut_xsearch = pool.submit(_discover_post_ids_x_search, handle)
-        jina_ids = fut_jina.result()
-        xsearch_ids = fut_xsearch.result()
+    if _is_x_search_enabled():
+        with concurrent.futures.ThreadPoolExecutor(max_workers=2) as pool:
+            fut_jina = pool.submit(_discover_post_ids_jina, handle)
+            fut_xsearch = pool.submit(_discover_post_ids_x_search, handle)
+            jina_ids = fut_jina.result()
+            xsearch_ids = fut_xsearch.result()
+    else:
+        jina_ids = _discover_post_ids_jina(handle)
+        xsearch_ids = []
 
     cached_ids = [
         str(p.get("id"))
@@ -1201,9 +1165,13 @@ def _fetch_mentions_free(
     limit: int = 20,
     cached_mentions: list[dict[str, Any]] | None = None,
 ) -> list[dict[str, Any]]:
-    """Fetch recent mentions of `@handle` at $0.00 X API cost via x_search + FxTwitter."""
+    """Fetch recent mentions of `@handle` via FxTwitter + cached mentions (plus opt-in x_search)."""
     limit = max(1, min(int(limit or 20), 50))
-    res = _run_x_search_query(f"recent posts mentioning @{handle}", excluded_x_handles=[handle])
+    res = (
+        _run_x_search_query(f"recent posts mentioning @{handle}", excluded_x_handles=[handle])
+        if _is_x_search_enabled()
+        else {}
+    )
     blob = " ".join(_extract_urls_from_x_search(res))
 
     pairs: list[tuple[str, str]] = []
@@ -1265,7 +1233,7 @@ def _run_xurl_v2(path: str, app_name: str | None = None, timeout: int = 20) -> d
     cmd = [xurl_bin]
     if xurl_cli:
         cmd.append(xurl_cli)
-    app = app_name or os.environ.get("X_DASHBOARD_APP") or _get_xurl_auth_info().get("default_app")
+    app = app_name or _get_xurl_auth_info().get("default_app")
     if app and app != "default":
         cmd += ["--app", app]
     cmd.append(path)
@@ -1287,9 +1255,9 @@ def _run_xurl_v2(path: str, app_name: str | None = None, timeout: int = 20) -> d
 
 
 def _request_x_v2(path: str, handle: str | None = None) -> dict[str, Any]:
-    """Request an X API v2 endpoint using a Hermes-scoped Bearer token or xurl CLI."""
+    """Request an X API v2 endpoint using a Hermes-scoped X_BEARER_TOKEN or xurl CLI."""
     env_vars = _read_env_vars()
-    token = env_vars.get("X_BEARER_TOKEN") or env_vars.get("XCHAT_ACCESS_TOKEN")
+    token = env_vars.get("X_BEARER_TOKEN")
     if token:
         headers = {"Authorization": f"Bearer {token}", "User-Agent": USER_AGENT}
         try:

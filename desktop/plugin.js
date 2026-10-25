@@ -119,17 +119,17 @@ function normalizeSummaryPayload(raw) {
   const defaultAuthSources = [
     {
       id: "xurl",
-      label: "Hermes xurl OAuth2 (~/.xurl)",
+      label: "xurl CLI (`xurl auth status`)",
       detected: Boolean(rawStatus.xurl_available),
       handle: rawStatus.xurl_available ? handle : void 0,
-      detail: rawStatus.xurl_available ? "Local OAuth2 token linked" : "Not detected on host"
+      detail: rawStatus.xurl_available ? "xurl CLI session linked" : "Not detected on PATH"
     },
     {
-      id: "xchat",
-      label: "Hermes XChat Bridge",
+      id: "x_bearer",
+      label: "X API v2 Bearer Token (`X_BEARER_TOKEN`)",
       detected: Boolean(rawStatus.xchat_configured),
       handle: rawStatus.xchat_configured ? handle : void 0,
-      detail: rawStatus.xchat_configured ? "XCHAT_ACCESS_TOKEN active" : "No XChat session configured"
+      detail: rawStatus.xchat_configured ? "Scoped X_BEARER_TOKEN configured" : "Not configured"
     },
     {
       id: "public_free",
@@ -1737,7 +1737,7 @@ function XDashboardPage() {
               /* @__PURE__ */ jsx("strong", { children: "Zero-Cost Guarantee & Hermes Auto-Link Policy" }),
               /* @__PURE__ */ jsx("span", { className: "xd-zero-cost-badge", children: "Cost Policy: $0.00 Default" })
             ] }),
-            /* @__PURE__ */ jsx("p", { className: "xd-post-text", style: { color: "var(--xd-text-muted)" }, children: status?.cost_policy || "X Dashboard automatically links your existing Hermes X credentials (~/.xurl, XCHAT_ACCESS_TOKEN, or public handle) and defaults to 100% Free Mode so routine dashboard refreshes never burn paid X API credits." })
+            /* @__PURE__ */ jsx("p", { className: "xd-post-text", style: { color: "var(--xd-text-muted)" }, children: status?.cost_policy || "X Dashboard resolves your configured handle via Hermes plugin settings, X_DASHBOARD_HANDLE, xurl CLI, or any public @handle, and defaults to 100% Free Mode ($0.00) so routine dashboard refreshes never burn paid X API or xAI credits." })
           ] })
         ] }) : null
       ] }),

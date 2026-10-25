@@ -4,8 +4,8 @@ All notable changes to the **X Dashboard** plugin for Hermes Web Dashboard and H
 
 ## 0.1.0 — 2026-10-25
 
-- **100% Free Mode (`$0.00`) by Default**: Routine refreshes use zero-cost public syndication (`api.fxtwitter.com`, Nitter/guest-token telemetry, Jina Reader, and local snapshot caching) so viewing your dashboard never burns X API credits.
-- **Automatic Hermes X Account Detection**: Auto-links connected X accounts from `~/.xurl` OAuth2 sessions, `XCHAT_ACCESS_TOKEN` / `~/.hermes/xchat`, `USER.md`, or falls back cleanly to any public `@handle` (`@NousResearch` out of the box when no local account is linked).
+- **100% Free Mode (`$0.00`) by Default**: Routine refreshes use zero-cost public syndication (`api.fxtwitter.com` / `api.vxtwitter.com`, Jina Reader `r.jina.ai`, and local snapshot caching in `<hermes_home>/plugin-data/x-dashboard/`) so viewing your dashboard never burns X API or xAI credits. Paid `x_search` discovery is strictly opt-in (`enable_x_search: false` by default).
+- **Scoped Hermes X Account Resolution**: Resolves handles from plugin settings (`<hermes_home>/plugin-data/x-dashboard/config.json` / `plugins.entries.x-dashboard.settings`), Hermes-scoped `X_DASHBOARD_HANDLE` (`agent.secret_scope.get_secret`), `xurl auth status` when `xurl` is on `PATH`, or falls back cleanly to any public `@handle` (`@NousResearch` out of the box when no handle is configured).
 - **Dual Web Dashboard & Hermes Desktop Native Plugin**: Ships both the Web Dashboard IIFE bundle (`dashboard/dist/index.js`) and the Hermes Desktop ESM plugin (`desktop/plugin.js`) from a shared TypeScript + React codebase.
 - **Creator & Agent Command Center UI**:
   - 6-card KPI Bento Grid with live follower/following ratios, history sparklines, engagement quality tiers (`Elite >3%`, `Strong >1.5%`, `Steady`), and community pulse metrics.

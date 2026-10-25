@@ -23,6 +23,10 @@ config_schema:
     choices: ["auto", "free", "live_v2"]
     default: "auto"
     description: "Default data source mode (auto, free $0.00 public intelligence, or live_v2 X API v2)"
+  enable_x_search:
+    type: boolean
+    default: false
+    description: "Opt-in to use Hermes's paid xAI x_search tool for additional post and mention discovery"
   x_bearer_token:
     type: string
     secret: true
