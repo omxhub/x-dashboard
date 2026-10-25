@@ -261,6 +261,13 @@ test("Web Dashboard XDashboardPage renders auto-linked profile, $0.00 Free Mode 
   assert.ok(text.includes("1,480"), "must render total followers KPI");
   assert.ok(text.includes("385"), "must render verified followers KPI");
   assert.ok(text.includes("Top Performing Post Spotlight"), "must render Top Post Spotlight card");
+  assert.ok(text.includes("Impressions Trajectory (Last 3 Posts)"), "must render Bars-Only Impressions Trajectory title");
+
+  const trajectorySvg = container.querySelector(".xd-trajectory-svg");
+  assert.ok(trajectorySvg, "must render trajectory SVG chart");
+  assert.equal(trajectorySvg.querySelectorAll("polyline").length, 0, "must not render overlaid ER% polyline");
+  assert.equal(trajectorySvg.querySelectorAll(".xd-bar-hit").length, 3, "must render full-height hit targets for each bar");
+  assert.ok(trajectorySvg.querySelector(".xd-chart-value-label"), "must render compact value label above selected/peak bar");
 
   const rootEl = container.querySelector('[data-testid="x-dashboard-root"]');
   assert.ok(rootEl, "must render x-dashboard-root element");

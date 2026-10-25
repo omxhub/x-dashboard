@@ -1014,12 +1014,12 @@ export default function XDashboardPage() {
 
         {/* 5. INTERACTIVE SVG VISUAL ANALYTICS SUITE */}
         <section className="xd-analytics-grid" aria-label="Visual Analytics Suite">
-          {/* Left Panel: Impressions & Engagement Trajectory SVG Chart + Top Post Spotlight */}
+          {/* Left Panel: Impressions Trajectory SVG Chart + Top Post Spotlight */}
           <div className="xd-panel">
             <div className="xd-panel-header">
               <div>
                 <h2 className="xd-panel-title">
-                  Impressions &amp; Engagement Trajectory (Last {chartPosts.length || 20} Posts)
+                  Impressions Trajectory (Last {chartPosts.length || 20} Posts)
                 </h2>
                 <p className="xd-panel-subtitle">
                   Click any bar to inspect reach, saves, and engagement rate
@@ -1060,33 +1060,40 @@ export default function XDashboardPage() {
                         1,
                         ...chartPosts.map((p) => p.impressions || 0),
                       );
-                      const maxEng = Math.max(
-                        1,
-                        ...chartPosts.map((p) => computePostEngagementRate(p)),
+                      const peakIdx = chartPosts.reduce(
+                        (best, p, i) =>
+                          (p.impressions || 0) > (chartPosts[best]?.impressions || 0)
+                            ? i
+                            : best,
+                        0,
                       );
                       const count = chartPosts.length;
                       const slotW = 656 / Math.max(1, count);
                       const barW = Math.max(8, Math.min(26, slotW * 0.64));
 
-                      const linePoints = chartPosts
-                        .map((p, idx) => {
-                          const x = 12 + idx * slotW + slotW / 2;
-                          const rate = computePostEngagementRate(p);
-                          const y = 156 - (rate / maxEng) * 124;
-                          return `${x.toFixed(1)},${y.toFixed(1)}`;
-                        })
-                        .join(" ");
-
                       return (
                         <>
                           {chartPosts.map((post, idx) => {
                             const x = 12 + idx * slotW + (slotW - barW) / 2;
+                            const centerX = x + barW / 2;
                             const h = Math.max(
                               5,
                               ((post.impressions || 0) / maxImp) * 132,
                             );
                             const y = 160 - h;
                             const isSelected = idx === selectedPostIndex;
+                            const isPeak = idx === peakIdx && count > 1;
+                            const dateStr = (post.created_at || "").slice(5, 10);
+                            const prevDateStr =
+                              idx > 0
+                                ? (chartPosts[idx - 1]?.created_at || "").slice(5, 10)
+                                : "";
+                            const showDateLabel =
+                              Boolean(dateStr) &&
+                              (idx === 0 ||
+                                idx === count - 1 ||
+                                isSelected ||
+                                dateStr !== prevDateStr);
 
                             return (
                               <g
@@ -1095,6 +1102,14 @@ export default function XDashboardPage() {
                                 onMouseEnter={() => setSelectedPostIndex(idx)}
                                 onClick={() => setSelectedPostIndex(idx)}
                               >
+                                <rect
+                                  className="xd-bar-hit"
+                                  x={x}
+                                  y={20}
+                                  width={barW}
+                                  height={140}
+                                  fill="transparent"
+                                />
                                 <rect
                                   className="xd-bar-rect"
                                   x={x}
@@ -1109,28 +1124,41 @@ export default function XDashboardPage() {
                                   }
                                   fillOpacity={isSelected ? 0.95 : 0.72}
                                 />
-                                <text
-                                  className="xd-chart-axis-text"
-                                  x={x + barW / 2}
-                                  y="176"
-                                  textAnchor="middle"
-                                >
-                                  {(post.created_at || "").slice(5, 10)}
-                                </text>
+                                {isSelected || isPeak ? (
+                                  <text
+                                    className={`xd-chart-value-label${
+                                      isSelected ? " is-selected" : ""
+                                    }`}
+                                    x={centerX}
+                                    y={Math.max(14, y - 5)}
+                                    textAnchor="middle"
+                                  >
+                                    {formatCompactNumber(post.impressions || 0)}
+                                  </text>
+                                ) : null}
+                                {showDateLabel ? (
+                                  <text
+                                    className={`xd-chart-axis-text${
+                                      isSelected ? " is-selected" : ""
+                                    }`}
+                                    x={centerX}
+                                    y="176"
+                                    textAnchor="middle"
+                                  >
+                                    {dateStr}
+                                  </text>
+                                ) : (
+                                  <line
+                                    className="xd-chart-axis-tick"
+                                    x1={centerX}
+                                    y1="162"
+                                    x2={centerX}
+                                    y2="166"
+                                  />
+                                )}
                               </g>
                             );
                           })}
-
-                          {chartPosts.length > 1 ? (
-                            <polyline
-                              fill="none"
-                              stroke="var(--xd-yellow)"
-                              strokeWidth="1.8"
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              points={linePoints}
-                            />
-                          ) : null}
                         </>
                       );
                     })()}

@@ -924,8 +924,38 @@
   font-family: var(--xd-font-mono);
 }
 
+.xd-chart-axis-text.is-selected {
+  opacity: 0.95;
+  font-weight: 600;
+  fill: var(--xd-emerald);
+}
+
+.xd-chart-axis-tick {
+  stroke: currentColor;
+  opacity: 0.25;
+  stroke-width: 1;
+}
+
+.xd-chart-value-label {
+  fill: currentColor;
+  opacity: 0.65;
+  font-size: 8.5px;
+  font-family: var(--xd-font-mono);
+  font-weight: 600;
+  pointer-events: none;
+}
+
+.xd-chart-value-label.is-selected {
+  fill: var(--xd-emerald);
+  opacity: 1;
+}
+
 .xd-bar-group {
   cursor: pointer;
+}
+
+.xd-bar-hit {
+  pointer-events: all;
 }
 
 .xd-bar-rect {
