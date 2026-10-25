@@ -262,6 +262,21 @@ test("Web Dashboard XDashboardPage renders auto-linked profile, $0.00 Free Mode 
   assert.ok(text.includes("385"), "must render verified followers KPI");
   assert.ok(text.includes("Top Performing Post Spotlight"), "must render Top Post Spotlight card");
 
+  const rootEl = container.querySelector('[data-testid="x-dashboard-root"]');
+  assert.ok(rootEl, "must render x-dashboard-root element");
+  assert.equal(
+    rootEl.getAttribute("data-selectable-text"),
+    "true",
+    "must opt in to Hermes Desktop text selection via data-selectable-text",
+  );
+  const styleText = container.querySelector("style")?.textContent || "";
+  assert.ok(
+    styleText.includes("--ui-bg-elevated") &&
+      styleText.includes("--ui-text-primary") &&
+      styleText.includes("--chrome-action-hover"),
+    "must bind styling to native Hermes Desktop CSS theme variables",
+  );
+
   // Switch to Mentions tab
   const mentionsTab = container.querySelector('[data-testid="tab-mentions"]');
   click(mentionsTab);
