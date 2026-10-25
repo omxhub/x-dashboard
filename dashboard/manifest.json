@@ -3,7 +3,7 @@
   "label": "X Dashboard",
   "description": "Zero-cost & auto-linked X analytics dashboard for Hermes Desktop and Web (100% Free Mode default + optional X API live sync)",
   "icon": "BarChart3",
-  "version": "2.0.0",
+  "version": "0.1.0",
   "tab": {
     "path": "/x-dashboard",
     "position": "after:analytics"

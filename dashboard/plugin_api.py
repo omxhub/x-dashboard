@@ -1,4 +1,4 @@
-"""FastAPI router for the x-dashboard Hermes dashboard plugin (v0.2.0).
+"""FastAPI router for the x-dashboard Hermes dashboard plugin (v0.1.0).
 
 Features:
 - Zero secret leakage: never exposes access tokens, refresh tokens, client secrets, or raw bearer tokens.
@@ -47,7 +47,7 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
-USER_AGENT = "HermesXDashboard/2.0"
+USER_AGENT = "HermesXDashboard/0.1"
 DEFAULT_TTL_SECONDS = 300
 MAX_HISTORY_POINTS = 90
 DEFAULT_GOALS = {"verified_followers": 500, "impressions": 500000}
@@ -1669,7 +1669,7 @@ def health() -> dict[str, Any]:
     conn = _detect_connection()
     return _scrub_secrets({
         "ok": True,
-        "version": "0.2.0",
+        "version": "0.1.0",
         "app": conn.get("xurl_app"),
         "user": conn.get("handle"),
         "mode": conn.get("mode"),

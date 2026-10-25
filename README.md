@@ -124,7 +124,7 @@ python -m unittest discover -s tests -p "test_*.py" -v
 
 ```text
 x-dashboard/
-├── plugin.yaml                 # Hermes plugin metadata (v2.0.0)
+├── plugin.yaml                 # Hermes plugin metadata (v0.1.0)
 ├── __init__.py                 # Hermes plugin lifecycle & route registration
 ├── LICENSE                     # MIT License
 ├── CHANGELOG.md                # Release history
