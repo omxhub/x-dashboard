@@ -1,6 +1,8 @@
 import XDashboardPage, {
+  escapeCsvCell,
   formatCompactNumber,
   formatRelativeTime,
+  safeExternalUrl,
 } from "../src/XDashboardPage";
 import {
   configureXDashboardHost,
@@ -27,6 +29,8 @@ export {
   normalizeSummaryPayload,
   formatCompactNumber,
   formatRelativeTime,
+  safeExternalUrl,
+  escapeCsvCell,
   X_DASHBOARD_DESKTOP_PATH,
   createXDashboardContributions,
   createDesktopXDashboardHost,

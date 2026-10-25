@@ -457,4 +457,15 @@ test("installDesktopPlugin archives existing directories and sweeps sibling .bac
   }
 });
 
+test("safeExternalUrl and escapeCsvCell harden external links and CSV exports", async () => {
+  const { safeExternalUrl, escapeCsvCell } = await import("./.build/x-dashboard-page.mjs");
+  assert.equal(safeExternalUrl("omxhub.com"), "https://omxhub.com");
+  assert.equal(safeExternalUrl("https://x.com/omx0r"), "https://x.com/omx0r");
+  assert.equal(safeExternalUrl("javascript:alert(1)", "https://x.com/omx0r"), "https://x.com/omx0r");
+  assert.equal(safeExternalUrl("javascript:alert(1)"), null);
+  const crlf = String.fromCharCode(13, 10);
+  assert.equal(escapeCsvCell(`=cmd|' /C calc'!A0${crlf}line2`), `"'=cmd|' /C calc'!A0 line2"`);
+});
+
+
 

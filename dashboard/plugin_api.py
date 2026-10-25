@@ -685,6 +685,24 @@ def _calc_engagement_rate(
     return round((interactions / max(int(impressions or 0), 1)) * 100.0, 2)
 
 
+def _normalize_external_url(raw_url: Any, fallback_url: Any = None) -> str | None:
+    candidate: Any = raw_url
+    if isinstance(raw_url, dict):
+        candidate = raw_url.get("url") or raw_url.get("display_url")
+    if not isinstance(candidate, str) or not candidate.strip():
+        candidate = fallback_url
+    if not isinstance(candidate, str):
+        return None
+    s = candidate.strip()
+    if not s:
+        return None
+    if s.startswith("https://") or s.startswith("http://"):
+        return s
+    if re.match(r"^[A-Za-z0-9][A-Za-z0-9.-]+\.[A-Za-z]{2,}(/.*)?$", s):
+        return f"https://{s}"
+    return None
+
+
 def _normalize_fx_profile(
     user_obj: dict[str, Any],
     handle: str,
@@ -692,13 +710,7 @@ def _normalize_fx_profile(
 ) -> dict[str, Any]:
     cached = cached_account or {}
     verification = user_obj.get("verification") if isinstance(user_obj.get("verification"), dict) else {}
-    website_raw = user_obj.get("website")
-    if isinstance(website_raw, dict):
-        website = website_raw.get("display_url") or website_raw.get("url")
-    elif isinstance(website_raw, str):
-        website = website_raw
-    else:
-        website = cached.get("website")
+    website = _normalize_external_url(user_obj.get("website"), cached.get("website"))
 
     created_iso, _ = _parse_created_at_iso(user_obj.get("joined") or user_obj.get("created_at") or cached.get("created_at"))
     cached_vf = cached.get("verified_followers_count")

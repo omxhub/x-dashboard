@@ -330,6 +330,22 @@ function formatRelativeTime(iso) {
   if (diffDay < 30) return `${diffDay}d ago`;
   return dt.toISOString().slice(0, 10);
 }
+function safeExternalUrl(raw, fallback) {
+  const candidate = (raw || "").trim() || (fallback || "").trim();
+  if (!candidate) return null;
+  if (candidate.startsWith("https://") || candidate.startsWith("http://")) {
+    return candidate;
+  }
+  if (/^[A-Za-z0-9][A-Za-z0-9.-]+\.[A-Za-z]{2,}(\/.*)?$/.test(candidate)) {
+    return `https://${candidate}`;
+  }
+  return fallback && (fallback.startsWith("https://") || fallback.startsWith("http://")) ? fallback : null;
+}
+function escapeCsvCell(raw) {
+  const cleaned = String(raw || "").replace(/\r\n|\r|\n/g, " ").replace(/"/g, '""');
+  const safeFormula = /^[=+\-@]/.test(cleaned) ? `'${cleaned}` : cleaned;
+  return `"${safeFormula}"`;
+}
 function highlightEntities(text) {
   if (!text) return [];
   const parts = text.split(/(https?:\/\/\S+|@[a-zA-Z0-9_]+|#[a-zA-Z0-9_]+)/g);
@@ -527,7 +543,7 @@ function XDashboardPage() {
         p.replies,
         p.bookmarks,
         computePostEngagementRate(p),
-        `"${(p.text || "").replace(/"/g, '""').replace(/\n/g, " ")}"`
+        escapeCsvCell(p.text)
       ]);
       const csv = [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");
       const blob = new Blob([csv], { type: "text/csv" });
@@ -784,10 +800,18 @@ function XDashboardPage() {
                 "📍 ",
                 account.location
               ] }) : null,
-              account?.website ? /* @__PURE__ */ jsxs("span", { className: "xd-meta-item", children: [
+              safeExternalUrl(account?.website) ? /* @__PURE__ */ jsxs("span", { className: "xd-meta-item", children: [
                 "🔗",
                 " ",
-                /* @__PURE__ */ jsx("a", { href: account.website, target: "_blank", rel: "noreferrer", children: account.website.replace(/^https?:\/\//, "") })
+                /* @__PURE__ */ jsx(
+                  "a",
+                  {
+                    href: safeExternalUrl(account?.website) || "#",
+                    target: "_blank",
+                    rel: "noreferrer",
+                    children: (account?.website || "").replace(/^https?:\/\//, "")
+                  }
+                )
               ] }) : null,
               account?.created_at ? /* @__PURE__ */ jsxs("span", { className: "xd-meta-item", children: [
                 "📅 Joined ",
@@ -1297,7 +1321,10 @@ function XDashboardPage() {
               /* @__PURE__ */ jsx(
                 "a",
                 {
-                  href: analytics.top_post.url || `https://x.com/${handle}/status/${analytics.top_post.id}`,
+                  href: safeExternalUrl(
+                    analytics.top_post.url,
+                    `https://x.com/${handle}/status/${analytics.top_post.id}`
+                  ) || `https://x.com/${handle}/status/${analytics.top_post.id}`,
                   target: "_blank",
                   rel: "noreferrer",
                   className: "xd-external-link",
@@ -1589,7 +1616,10 @@ function XDashboardPage() {
                 /* @__PURE__ */ jsx(
                   "a",
                   {
-                    href: post.url || `https://x.com/${handle}/status/${post.id}`,
+                    href: safeExternalUrl(
+                      post.url,
+                      `https://x.com/${handle}/status/${post.id}`
+                    ) || `https://x.com/${handle}/status/${post.id}`,
                     target: "_blank",
                     rel: "noreferrer",
                     className: "xd-external-link",
@@ -1645,7 +1675,10 @@ function XDashboardPage() {
             /* @__PURE__ */ jsx(
               "a",
               {
-                href: m.url || `https://x.com/${m.author_username}/status/${m.id}`,
+                href: safeExternalUrl(
+                  m.url,
+                  `https://x.com/${m.author_username}/status/${m.id}`
+                ) || `https://x.com/${m.author_username}/status/${m.id}`,
                 target: "_blank",
                 rel: "noreferrer",
                 className: "xd-external-link",

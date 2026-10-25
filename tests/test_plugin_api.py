@@ -297,6 +297,18 @@ class PluginApiTestCase(unittest.TestCase):
         self.assertEqual(acct["cost_incurred"], "$0.00")
         self.assertIn("402", acct["live_v2_warning"])
 
+    def test_normalize_external_url_upgrades_domains_and_rejects_unsafe_schemes(self) -> None:
+        self.assertEqual(
+            plugin_api._normalize_external_url({"display_url": "omxhub.com", "url": "https://omxhub.com"}),
+            "https://omxhub.com",
+        )
+        self.assertEqual(
+            plugin_api._normalize_external_url({"display_url": "omxhub.com"}),
+            "https://omxhub.com",
+        )
+        self.assertIsNone(plugin_api._normalize_external_url("javascript:alert(1)"))
+        self.assertIsNone(plugin_api._normalize_external_url("data:text/html,hi"))
+
 
 if __name__ == "__main__":
     unittest.main()

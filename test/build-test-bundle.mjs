@@ -6,6 +6,7 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const out = path.join(root, "test", ".build", "x-dashboard-page.mjs");
 
 await build({
+  configFile: false,
   root,
   logLevel: "warn",
   resolve: {

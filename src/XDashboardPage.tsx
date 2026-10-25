@@ -40,6 +40,31 @@ export function formatRelativeTime(iso: string | undefined): string {
   return dt.toISOString().slice(0, 10);
 }
 
+export function safeExternalUrl(
+  raw: string | undefined | null,
+  fallback?: string,
+): string | null {
+  const candidate = (raw || "").trim() || (fallback || "").trim();
+  if (!candidate) return null;
+  if (candidate.startsWith("https://") || candidate.startsWith("http://")) {
+    return candidate;
+  }
+  if (/^[A-Za-z0-9][A-Za-z0-9.-]+\.[A-Za-z]{2,}(\/.*)?$/.test(candidate)) {
+    return `https://${candidate}`;
+  }
+  return fallback && (fallback.startsWith("https://") || fallback.startsWith("http://"))
+    ? fallback
+    : null;
+}
+
+export function escapeCsvCell(raw: string | undefined | null): string {
+  const cleaned = String(raw || "")
+    .replace(/\r\n|\r|\n/g, " ")
+    .replace(/"/g, '""');
+  const safeFormula = /^[=+\-@]/.test(cleaned) ? `'${cleaned}` : cleaned;
+  return `"${safeFormula}"`;
+}
+
 export function highlightEntities(text: string): ReactNode[] {
   if (!text) return [];
   const parts = text.split(/(https?:\/\/\S+|@[a-zA-Z0-9_]+|#[a-zA-Z0-9_]+)/g);
@@ -254,7 +279,7 @@ export default function XDashboardPage() {
         p.replies,
         p.bookmarks,
         computePostEngagementRate(p),
-        `"${(p.text || "").replace(/"/g, '""').replace(/\n/g, " ")}"`,
+        escapeCsvCell(p.text),
       ]);
       const csv = [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");
       const blob = new Blob([csv], { type: "text/csv" });
@@ -546,11 +571,15 @@ export default function XDashboardPage() {
                 {account?.location ? (
                   <span className="xd-meta-item">📍 {account.location}</span>
                 ) : null}
-                {account?.website ? (
+                {safeExternalUrl(account?.website) ? (
                   <span className="xd-meta-item">
                     🔗{" "}
-                    <a href={account.website} target="_blank" rel="noreferrer">
-                      {account.website.replace(/^https?:\/\//, "")}
+                    <a
+                      href={safeExternalUrl(account?.website) || "#"}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      {(account?.website || "").replace(/^https?:\/\//, "")}
                     </a>
                   </span>
                 ) : null}
@@ -1032,8 +1061,10 @@ export default function XDashboardPage() {
                   </span>
                   <a
                     href={
-                      analytics.top_post.url ||
-                      `https://x.com/${handle}/status/${analytics.top_post.id}`
+                      safeExternalUrl(
+                        analytics.top_post.url,
+                        `https://x.com/${handle}/status/${analytics.top_post.id}`,
+                      ) || `https://x.com/${handle}/status/${analytics.top_post.id}`
                     }
                     target="_blank"
                     rel="noreferrer"
@@ -1309,7 +1340,12 @@ export default function XDashboardPage() {
                           </div>
 
                           <a
-                            href={post.url || `https://x.com/${handle}/status/${post.id}`}
+                            href={
+                              safeExternalUrl(
+                                post.url,
+                                `https://x.com/${handle}/status/${post.id}`,
+                              ) || `https://x.com/${handle}/status/${post.id}`
+                            }
                             target="_blank"
                             rel="noreferrer"
                             className="xd-external-link"
@@ -1369,7 +1405,10 @@ export default function XDashboardPage() {
 
                       <a
                         href={
-                          m.url || `https://x.com/${m.author_username}/status/${m.id}`
+                          safeExternalUrl(
+                            m.url,
+                            `https://x.com/${m.author_username}/status/${m.id}`,
+                          ) || `https://x.com/${m.author_username}/status/${m.id}`
                         }
                         target="_blank"
                         rel="noreferrer"

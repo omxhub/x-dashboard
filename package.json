@@ -10,7 +10,9 @@
     "build:desktop": "vite build --config vite.desktop.config.ts",
     "install:desktop": "node scripts/install-desktop.mjs",
     "pretest": "node test/build-test-bundle.mjs",
-    "test": "node --experimental-strip-types --test \"test/*.test.mjs\"",
+    "test": "npm run test:js && npm run test:py",
+    "test:js": "node --experimental-strip-types --test \"test/*.test.mjs\"",
+    "test:py": "python -m unittest discover -s tests -p \"test_*.py\" -v",
     "typecheck": "tsc -p . --noEmit"
   },
   "devDependencies": {
