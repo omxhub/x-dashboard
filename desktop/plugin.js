@@ -82,7 +82,7 @@ function computeAnalyticsFromPosts(posts, partial, fallbackImpressions) {
 function normalizeSummaryPayload(raw) {
   const rawAccount = raw.account ?? {};
   const rawStatus = raw.status ?? {};
-  const handle = rawStatus.handle || rawAccount.username || "omx0r";
+  const handle = rawStatus.handle || rawAccount.username || "NousResearch";
   const rawPosts = Array.isArray(raw.posts?.items) ? raw.posts.items : [];
   const posts = rawPosts.map((p, idx) => ({
     id: String(p.id || `post-${idx}`),
@@ -548,7 +548,7 @@ function XDashboardPage() {
   const analytics = data?.analytics;
   const goals = data?.goals ?? { verified_followers: 500, impressions: 5e5 };
   const history = data?.history ?? [];
-  const handle = status?.handle || account?.username || "omx0r";
+  const handle = status?.handle || account?.username || "NousResearch";
   const followers = account?.followers_count ?? 0;
   const following = account?.following_count ?? 0;
   const verifiedFollowers = account?.verified_followers_count ?? 0;

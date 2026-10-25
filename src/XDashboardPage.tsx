@@ -277,7 +277,7 @@ export default function XDashboardPage() {
   const goals = data?.goals ?? { verified_followers: 500, impressions: 500000 };
   const history = data?.history ?? [];
 
-  const handle = status?.handle || account?.username || "omx0r";
+  const handle = status?.handle || account?.username || "NousResearch";
   const followers = account?.followers_count ?? 0;
   const following = account?.following_count ?? 0;
   const verifiedFollowers = account?.verified_followers_count ?? 0;

@@ -265,7 +265,7 @@ export function normalizeSummaryPayload(raw: XSummaryPayload): NormalizedXDashbo
   const handle =
     rawStatus.handle ||
     rawAccount.username ||
-    "omx0r";
+    "NousResearch";
 
   const rawPosts = Array.isArray(raw.posts?.items) ? raw.posts!.items! : [];
   const posts: XPost[] = rawPosts.map((p, idx) => ({

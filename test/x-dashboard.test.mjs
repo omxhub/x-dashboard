@@ -420,3 +420,41 @@ test("Resilient fallback fetches /account, /posts, and /mentions in parallel whe
   container.remove();
 });
 
+test("installDesktopPlugin archives existing directories and sweeps sibling .backup-* folders out of plugin roots", async () => {
+  const { installDesktopPlugin } = await import("../scripts/install-desktop.mjs");
+  const fs = await import("node:fs/promises");
+  const os = await import("node:os");
+  const path = await import("node:path");
+
+  const tmpRoot = await fs.mkdtemp(path.join(os.tmpdir(), "x-dashboard-install-test-"));
+  try {
+    const fakeHermes = path.join(tmpRoot, "hermes");
+    const fakePlugins = path.join(fakeHermes, "plugins");
+    const fakeDesktopPlugins = path.join(fakeHermes, "desktop-plugins");
+
+    // Pre-existing regular directory + stale sibling backup directory
+    await fs.mkdir(path.join(fakeDesktopPlugins, "x-dashboard"), { recursive: true });
+    await fs.writeFile(path.join(fakeDesktopPlugins, "x-dashboard", "old.txt"), "old");
+    await fs.mkdir(path.join(fakeDesktopPlugins, "x-dashboard.backup-2026-01-01"), { recursive: true });
+    await fs.mkdir(path.join(fakePlugins, "x-dashboard.backup-2026-01-01"), { recursive: true });
+
+    const res = await installDesktopPlugin({
+      repoRoot: path.resolve("."),
+      hermesHome: fakeHermes,
+    });
+
+    assert.equal(res.status, "linked");
+    assert.ok(res.backup && res.backup.includes("archived-plugin-backups"), "backup must be outside desktop-plugins/");
+
+    const desktopEntries = await fs.readdir(fakeDesktopPlugins);
+    const pluginEntries = await fs.readdir(fakePlugins);
+    assert.deepEqual(desktopEntries, ["x-dashboard"], "no sibling .backup-* folders may remain in desktop-plugins/");
+    assert.deepEqual(pluginEntries, ["x-dashboard"], "no sibling .backup-* folders may remain in plugins/");
+    await fs.rm(path.join(fakeDesktopPlugins, "x-dashboard"), { recursive: true, force: true });
+    await fs.rm(path.join(fakePlugins, "x-dashboard"), { recursive: true, force: true });
+  } finally {
+    await fs.rm(tmpRoot, { recursive: true, force: true });
+  }
+});
+
+

@@ -345,7 +345,7 @@ def _parse_xurl_auth_status(raw_output: str) -> dict[str, Any]:
         has_marker = "▸" in stripped or stripped.startswith(">") or stripped.startswith("*")
         unmarked = stripped.lstrip("▸>* ").strip()
 
-        # App header line: e.g. `default  [(no credentials)]` or `▸ omx0r-xurl  [client_id: ...]`
+        # App header line: e.g. `default  [(no credentials)]` or `▸ my-xurl-app  [client_id:...]`
         if not is_indented and ("[" in unmarked or not unmarked.startswith(("redirect_uri:", "oauth2:", "oauth1:", "bearer:"))):
             app_name = unmarked.split()[0] if unmarked.split() else ""
             if app_name and not app_name.endswith(":"):
@@ -554,7 +554,7 @@ def _detect_connection(requested_handle: str | None = None, requested_mode: str 
         or xchat_handle
         or xurl_handle
         or user_md_handle
-        or (available_handles[0] if available_handles else "omx0r")
+        or (available_handles[0] if available_handles else "NousResearch")
     )
     if active_handle and active_handle not in available_handles:
         available_handles.insert(0, active_handle)

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { access, lstat, mkdir, realpath, rename, symlink } from "node:fs/promises";
+import { access, lstat, mkdir, readdir, realpath, rename, rm, symlink } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -13,8 +13,28 @@ export function defaultHermesHome(env = process.env, platform = process.platform
   return path.join(os.homedir(), ".hermes");
 }
 
-async function ensureDirectoryLink(source, destination, platform = process.platform) {
-  await mkdir(path.dirname(destination), { recursive: true });
+function resolveBackupDir(hermesHome) {
+  return path.resolve(hermesHome, "cache", "scratch", "archived-plugin-backups");
+}
+
+async function sweepSiblingBackups(parentDir, pluginId, backupRoot) {
+  const entries = await readdir(parentDir, { withFileTypes: true }).catch(() => []);
+  const prefix = `${pluginId}.backup-`;
+  for (const entry of entries) {
+    if (!entry.name.startsWith(prefix)) continue;
+    await mkdir(backupRoot, { recursive: true });
+    const src = path.join(parentDir, entry.name);
+    const dst = path.join(backupRoot, `${path.basename(parentDir)}-${entry.name}`);
+    await rm(dst, { recursive: true, force: true }).catch(() => {});
+    await rename(src, dst);
+  }
+}
+
+async function ensureDirectoryLink(source, destination, platform = process.platform, backupRoot = null) {
+  const parentDir = path.dirname(destination);
+  await mkdir(parentDir, { recursive: true });
+  const effectiveBackupRoot = backupRoot || path.resolve(parentDir, "..", "cache", "scratch", "archived-plugin-backups");
+  await sweepSiblingBackups(parentDir, path.basename(destination), effectiveBackupRoot);
 
   let backup;
   try {
@@ -29,8 +49,12 @@ async function ensureDirectoryLink(source, destination, platform = process.platf
       }
     }
 
+    await mkdir(effectiveBackupRoot, { recursive: true });
     const stamp = new Date().toISOString().replaceAll(":", "-").replaceAll(".", "-");
-    backup = `${destination}.backup-${stamp}`;
+    backup = path.join(
+      effectiveBackupRoot,
+      `${path.basename(parentDir)}-${path.basename(destination)}.backup-${stamp}`,
+    );
     await rename(destination, backup);
   } catch (error) {
     if (error?.code !== "ENOENT") throw error;
@@ -48,15 +72,16 @@ export async function installDesktopPlugin({
 }) {
   const desktopSource = path.resolve(repoRoot, "desktop");
   const desktopDest = path.resolve(hermesHome, "desktop-plugins", PLUGIN_ID);
+  const backupRoot = resolveBackupDir(hermesHome);
 
   await access(path.join(desktopSource, "plugin.js"));
-  const desktopResult = await ensureDirectoryLink(desktopSource, desktopDest, platform);
+  const desktopResult = await ensureDirectoryLink(desktopSource, desktopDest, platform, backupRoot);
 
   let webResult = null;
   if (linkWebPlugin) {
     const webDestination = path.resolve(hermesHome, "plugins", PLUGIN_ID);
     if (path.resolve(repoRoot) !== webDestination) {
-      webResult = await ensureDirectoryLink(path.resolve(repoRoot), webDestination, platform);
+      webResult = await ensureDirectoryLink(path.resolve(repoRoot), webDestination, platform, backupRoot);
     } else {
       webResult = { status: "already-in-place", source: repoRoot, destination: webDestination };
     }
