@@ -891,11 +891,19 @@ function XDashboardPage() {
                           "aria-label": `Remove @${h}`,
                           onClick: (e) => {
                             e.stopPropagation();
+                            const nextRemaining = (status?.available_handles ?? []).filter(
+                              (ah) => !removedHandles.has(ah) && ah !== h
+                            );
                             setRemovedHandles((prev) => {
                               const next = new Set(prev);
                               next.add(h);
                               return next;
                             });
+                            if (handleInput === h && nextRemaining.length > 0) {
+                              const nextHandle = nextRemaining[0];
+                              setHandleInput(nextHandle);
+                              void fetchDashboard({ handle: nextHandle, refresh: false });
+                            }
                           },
                           children: "×"
                         }
