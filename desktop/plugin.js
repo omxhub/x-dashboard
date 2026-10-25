@@ -867,7 +867,7 @@ function XDashboardPage() {
                   ] }),
                   status?.available_handles && status.available_handles.length > 1 ? /* @__PURE__ */ jsxs("div", { className: "xd-profile-badges", children: [
                     /* @__PURE__ */ jsx("span", { className: "xd-label", children: "Detected:" }),
-                    status.available_handles.filter((h) => !removedHandles.has(h)).map((h) => /* @__PURE__ */ jsxs("span", { className: "xd-detected-pill", children: [
+                    status.available_handles.filter((h) => !removedHandles.has(h) && !(status?.hidden_handles ?? []).includes(h)).map((h) => /* @__PURE__ */ jsxs("span", { className: "xd-detected-pill", children: [
                       /* @__PURE__ */ jsxs(
                         "button",
                         {
@@ -891,14 +891,18 @@ function XDashboardPage() {
                           "aria-label": `Remove @${h}`,
                           onClick: (e) => {
                             e.stopPropagation();
-                            const nextRemaining = (status?.available_handles ?? []).filter(
-                              (ah) => !removedHandles.has(ah) && ah !== h
+                            const nextHidden = [...status?.hidden_handles ?? [], h].filter(
+                              (v, i, arr) => arr.indexOf(v) === i
                             );
                             setRemovedHandles((prev) => {
                               const next = new Set(prev);
                               next.add(h);
                               return next;
                             });
+                            void saveDashboardConfig({ hidden_handles: nextHidden }).catch(() => void 0);
+                            const nextRemaining = (status?.available_handles ?? []).filter(
+                              (ah) => ah !== h && !(status?.hidden_handles ?? []).includes(ah)
+                            );
                             if (handleInput === h && nextRemaining.length > 0) {
                               const nextHandle = nextRemaining[0];
                               setHandleInput(nextHandle);

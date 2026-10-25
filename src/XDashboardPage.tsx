@@ -643,7 +643,7 @@ export default function XDashboardPage() {
               <div className="xd-profile-badges">
                 <span className="xd-label">Detected:</span>
                 {status.available_handles
-                  .filter((h) => !removedHandles.has(h))
+                  .filter((h) => !removedHandles.has(h) && !(status?.hidden_handles ?? []).includes(h))
                   .map((h) => (
                     <span key={h} className="xd-detected-pill">
                       <button
@@ -662,15 +662,20 @@ export default function XDashboardPage() {
                         aria-label={`Remove @${h}`}
                         onClick={(e) => {
                           e.stopPropagation();
-                          const nextRemaining = (status?.available_handles ?? []).filter(
-                            (ah) => !removedHandles.has(ah) && ah !== h,
+                          const nextHidden = [...(status?.hidden_handles ?? []), h].filter(
+                            (v, i, arr) => arr.indexOf(v) === i,
                           );
                           setRemovedHandles((prev) => {
                             const next = new Set(prev);
                             next.add(h);
                             return next;
                           });
+                          // Persist the removed handle to backend config
+                          void saveDashboardConfig({ hidden_handles: nextHidden }).catch(() => undefined);
                           // If the removed handle is the active one, switch to the next available
+                          const nextRemaining = (status?.available_handles ?? []).filter(
+                            (ah) => ah !== h && !(status?.hidden_handles ?? []).includes(ah),
+                          );
                           if (handleInput === h && nextRemaining.length > 0) {
                             const nextHandle = nextRemaining[0];
                             setHandleInput(nextHandle);
