@@ -521,6 +521,48 @@
   gap: 0.4rem;
 }
 
+.xd-detected-pill {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 0;
+}
+
+.xd-detected-pill .xd-btn.xd-btn-sm {
+  padding-right: 1.35rem;
+}
+
+.xd-detected-pill-remove {
+  position: absolute;
+  top: -0.35rem;
+  right: -0.35rem;
+  width: 1rem;
+  height: 1rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 1px solid var(--xd-stroke);
+  border-radius: 999px;
+  background: var(--xd-surface);
+  color: var(--xd-text-tertiary);
+  font-size: 0.65rem;
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.12s ease, color 0.12s ease, border-color 0.12s ease;
+}
+
+.xd-detected-pill:hover .xd-detected-pill-remove,
+.xd-detected-pill:focus-within .xd-detected-pill-remove {
+  opacity: 1;
+}
+
+.xd-detected-pill-remove:hover {
+  color: var(--xd-fg);
+  border-color: var(--xd-text-secondary);
+}
+
 .xd-bio-row {
   display: flex;
   flex-direction: column;

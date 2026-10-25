@@ -242,6 +242,7 @@ export default function XDashboardPage() {
   const [editingImpressionsGoal, setEditingImpressionsGoal] = useState<boolean>(false);
   const [impressionsGoalInput, setImpressionsGoalInput] = useState<string>("500000");
   const [statusNotice, setStatusNotice] = useState<string | null>(null);
+  const [removedHandles, setRemovedHandles] = useState<Set<string>>(new Set());
 
   const fetchDashboard = useCallback(
     async (opts?: { handle?: string; mode?: "auto" | "free" | "live_v2"; refresh?: boolean }) => {
@@ -641,19 +642,37 @@ export default function XDashboardPage() {
             {status?.available_handles && status.available_handles.length > 1 ? (
               <div className="xd-profile-badges">
                 <span className="xd-label">Detected:</span>
-                {status.available_handles.map((h) => (
-                  <button
-                    key={h}
-                    type="button"
-                    className="xd-btn xd-btn-sm"
-                    onClick={() => {
-                      setHandleInput(h);
-                      void fetchDashboard({ handle: h, refresh: false });
-                    }}
-                  >
-                    @{h}
-                  </button>
-                ))}
+                {status.available_handles
+                  .filter((h) => !removedHandles.has(h))
+                  .map((h) => (
+                    <span key={h} className="xd-detected-pill">
+                      <button
+                        type="button"
+                        className="xd-btn xd-btn-sm"
+                        onClick={() => {
+                          setHandleInput(h);
+                          void fetchDashboard({ handle: h, refresh: false });
+                        }}
+                      >
+                        @{h}
+                      </button>
+                      <button
+                        type="button"
+                        className="xd-detected-pill-remove"
+                        aria-label={`Remove @${h}`}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setRemovedHandles((prev) => {
+                            const next = new Set(prev);
+                            next.add(h);
+                            return next;
+                          });
+                        }}
+                      >
+                        ×
+                      </button>
+                    </span>
+                  ))}
               </div>
             ) : null}
           </div>
