@@ -8,6 +8,12 @@
   <a href="https://omxhub.github.io/x-dashboard/"><strong>🌐 Live Interactive Demo &amp; Product Showcase →</strong></a>
 </p>
 
+<p align="center">
+  <a href="https://omxhub.github.io/x-dashboard/">
+    <img src="docs/assets/x-dashboard-preview.png" alt="X Dashboard inside Hermes Desktop" width="100%" />
+  </a>
+</p>
+
 ---
 
 ## Why X Dashboard?

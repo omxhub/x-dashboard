@@ -367,6 +367,33 @@
       color: var(--xd-text-muted);
     }
     .xd-post-metrics strong { color: var(--xd-text); }
+    .showcase-screenshot-wrap {
+      max-width: 1480px;
+      margin: 0 auto 24px;
+      padding: 0 28px;
+    }
+    .showcase-screenshot-card {
+      border-radius: 16px;
+      overflow: hidden;
+      border: 1px solid rgba(56, 189, 248, 0.28);
+      background: rgba(9, 13, 22, 0.9);
+      box-shadow: 0 24px 60px rgba(0, 0, 0, 0.65);
+    }
+    .showcase-screenshot-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 16px;
+      background: rgba(15, 23, 42, 0.85);
+      border-bottom: 1px solid var(--xd-border);
+      font-size: 12px;
+      color: var(--xd-text-muted);
+    }
+    .showcase-screenshot-card img {
+      display: block;
+      width: 100%;
+      height: auto;
+    }
   </style>
 </head>
 <body>
@@ -390,6 +417,16 @@
     <div class="preset-switcher">
       <button class="preset-btn active" onclick="selectProfile('omx0r')" id="btn-omx0r">@omx0r (Auto-Linked · xurl)</button>
       <button class="preset-btn" onclick="selectProfile('NousResearch')" id="btn-NousResearch">@NousResearch (Public Free Mode)</button>
+    </div>
+  </section>
+
+  <section class="showcase-screenshot-wrap">
+    <div class="showcase-screenshot-card">
+      <div class="showcase-screenshot-bar">
+        <span>🖥️ <strong>Live in Hermes Desktop</strong> — Native Plugin View (<code>/x-dashboard</code>)</span>
+        <span style="color:#34d399;font-family:var(--xd-font-mono);">● Auto-Linked · $0.00 Free Mode</span>
+      </div>
+      <img src="./assets/x-dashboard-preview.png" alt="X Dashboard running inside Hermes Desktop" loading="eager" />
     </div>
   </section>
 
