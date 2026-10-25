@@ -157,9 +157,13 @@ def _candidate_hermes_dirs() -> list[Path]:
 
 
 def _cache_dir() -> Path:
-    d = _get_hermes_home() / "cache" / "x-dashboard"
-    d.mkdir(parents=True, exist_ok=True)
-    return d
+    try:
+        from plugins.plugin_storage import plugin_data_dir
+        return Path(plugin_data_dir("x-dashboard"))
+    except Exception:
+        d = _get_hermes_home() / "plugin-data" / "x-dashboard"
+        d.mkdir(parents=True, exist_ok=True)
+        return d
 
 
 def _config_path() -> Path:
@@ -192,17 +196,31 @@ def _write_json_file(path: Path, payload: dict[str, Any]) -> None:
         logger.warning("Failed writing JSON file %s: %s", path, exc)
 
 
+def _load_hermes_plugin_settings() -> dict[str, Any]:
+    try:
+        from hermes_cli.config import load_config
+        cfg = load_config()
+        if isinstance(cfg, dict):
+            entry = ((cfg.get("plugins") or {}).get("entries") or {}).get("x-dashboard")
+            if isinstance(entry, dict) and isinstance(entry.get("settings"), dict):
+                return entry["settings"]
+    except Exception:
+        pass
+    return {}
+
+
 def _load_dashboard_config() -> dict[str, Any]:
     raw = _read_json_file(_config_path())
+    settings = _load_hermes_plugin_settings()
     goals_raw = raw.get("goals") if isinstance(raw.get("goals"), dict) else {}
     goals = {
         "verified_followers": int(goals_raw.get("verified_followers") or DEFAULT_GOALS["verified_followers"]),
         "impressions": int(goals_raw.get("impressions") or DEFAULT_GOALS["impressions"]),
     }
-    mode = str(raw.get("default_mode") or raw.get("mode") or "auto").strip().lower()
+    mode = str(raw.get("default_mode") or raw.get("mode") or settings.get("default_mode") or "auto").strip().lower()
     if mode not in VALID_MODES:
         mode = "auto"
-    handle = _sanitize_Handle(raw.get("handle"))
+    handle = _sanitize_Handle(raw.get("handle") or settings.get("handle"))
     return {
         "handle": handle,
         "default_mode": mode,
@@ -243,65 +261,48 @@ def _save_dashboard_config(update: dict[str, Any]) -> dict[str, Any]:
 
 
 # ---------------------------------------------------------------------------
-# Safe .env & auth discovery
+# Safe Hermes secret & auth discovery (Catalog Rule 9 & 11 compliant)
 # ---------------------------------------------------------------------------
 
 
-def _parse_dotenv_file(path: Path) -> dict[str, str]:
-    """Safely parse KEY=VALUE lines from a .env file without mutating os.environ."""
-    values: dict[str, str] = {}
+def _get_scoped_env(name: str) -> str:
+    """Resolve an environment/secret value via Hermes's public secret_scope or os.environ."""
     try:
-        if not path.exists():
-            return values
-        for raw_line in path.read_text(encoding="utf-8", errors="replace").splitlines():
-            line = raw_line.strip()
-            if not line or line.startswith("#"):
-                continue
-            if line.startswith("export "):
-                line = line[7:].strip()
-            if "=" not in line:
-                continue
-            k, v = line.split("=", 1)
-            key = k.strip()
-            val = v.strip()
-            if len(val) >= 2 and ((val[0] == val[-1] == '"') or (val[0] == val[-1] == "'")):
-                val = val[1:-1]
-            if key:
-                values[key] = val
+        from agent.secret_scope import get_secret
+        val = get_secret(name)
+        if val is not None and str(val).strip():
+            return str(val).strip()
     except Exception:
         pass
-    return values
+    val = os.environ.get(name)
+    return val.strip() if val is not None and val.strip() else ""
 
 
 def _read_env_vars() -> dict[str, str]:
-    """Read relevant X env vars from .env files and os.environ (never returned raw to callers)."""
+    """Read declared X env vars via Hermes secret_scope / os.environ (never returned raw to callers)."""
     merged: dict[str, str] = {}
-    for d in reversed(_candidate_hermes_dirs()):
-        merged.update(_parse_dotenv_file(d / ".env"))
     tracked_keys = (
         "X_DASHBOARD_HANDLE",
         "X_DASHBOARD_USER",
         "X_DASHBOARD_APP",
         "X_ANALYTICS_USER",
         "X_ANALYTICS_APP",
+        "XCHAT_HANDLE",
         "XCHAT_ACCESS_TOKEN",
-        "XCHAT_REFRESH_TOKEN",
-        "XCHAT_CLIENT_ID",
-        "XCHAT_CLIENT_SECRET",
         "XCHAT_USER_ID",
         "X_BEARER_TOKEN",
         "XAI_API_KEY",
     )
     for k in tracked_keys:
-        v = os.environ.get(k)
-        if v is not None and v.strip():
-            merged[k] = v.strip()
+        v = _get_scoped_env(k)
+        if v:
+            merged[k] = v
     return merged
 
 
 def _resolve_xurl_binary() -> tuple[str | None, str | None]:
     """Return (executable, optional_cli_js_arg) or (None, None) if xurl is not installed."""
-    env_bin = (os.environ.get("XURL_BIN") or "").strip()
+    env_bin = _get_scoped_env("XURL_BIN")
     if env_bin:
         p = Path(env_bin)
         if p.exists() or shutil.which(env_bin):
@@ -310,21 +311,6 @@ def _resolve_xurl_binary() -> tuple[str | None, str | None]:
     found = shutil.which("xurl")
     if found and not found.lower().endswith(".cmd"):
         return found, None
-
-    for base in _candidate_hermes_dirs():
-        tools_dir = base / "tools"
-        if tools_dir.exists():
-            for exe_match in sorted(tools_dir.glob("node-*/node_modules/@xdevplatform/xurl/binary/xurl*"), reverse=True):
-                if exe_match.is_file():
-                    return str(exe_match), None
-            node_bin = shutil.which("node")
-            for cli_match in sorted(tools_dir.glob("node-*/node_modules/@xdevplatform/xurl/cli.js"), reverse=True):
-                if node_bin and cli_match.is_file():
-                    return node_bin, str(cli_match)
-            for bin_match in sorted(tools_dir.glob("node-*/xurl*"), reverse=True):
-                if bin_match.is_file() and not bin_match.name.lower().endswith(".cmd"):
-                    return str(bin_match), None
-
     if found:
         return found, None
     return None, None
@@ -462,29 +448,13 @@ def _get_xurl_auth_info(force_refresh: bool = False) -> dict[str, Any]:
 
 
 def _check_x_search_available() -> bool:
-    for d in _candidate_hermes_dirs():
-        agent_dir = d / "hermes-agent"
-        if agent_dir.exists() and str(agent_dir) not in sys.path:
-            sys.path.insert(0, str(agent_dir))
     try:
-        from tools.x_search_tool import check_x_search_requirements
-        return bool(check_x_search_requirements())
+        from tools.registry import registry
+        if registry.is_toolset_available("x_search"):
+            return True
     except Exception:
-        return False
-
-
-def _detect_user_md_handle() -> str:
-    for d in _candidate_hermes_dirs():
-        user_md = d / "memories" / "USER.md"
-        if user_md.exists():
-            try:
-                text = user_md.read_text(encoding="utf-8", errors="replace")
-                m = re.search(r"\bX\s+@([A-Za-z0-9_]{1,15})\b", text)
-                if m:
-                    return _sanitize_Handle(m.group(1))
-            except Exception:
-                pass
-    return ""
+        pass
+    return bool(_get_scoped_env("XAI_API_KEY"))
 
 
 def _detect_connection(requested_handle: str | None = None, requested_mode: str | None = None) -> dict[str, Any]:
@@ -501,26 +471,18 @@ def _detect_connection(requested_handle: str | None = None, requested_mode: str 
         or env_vars.get("X_ANALYTICS_USER")
     )
 
-    # 2. XChat registration & env
-    xchat_marker: dict[str, Any] = {}
-    for d in _candidate_hermes_dirs():
-        marker_path = d / "xchat" / "registration.json"
-        if marker_path.exists():
-            xchat_marker = _read_json_file(marker_path)
-            if xchat_marker:
-                break
-    xchat_handle = _sanitize_Handle(xchat_marker.get("username") or xchat_marker.get("handle"))
-    xchat_user_id = str(xchat_marker.get("user_id") or env_vars.get("XCHAT_USER_ID") or "").strip()
-    xchat_configured = bool(env_vars.get("XCHAT_ACCESS_TOKEN") or xchat_marker.get("registered"))
+    # 2. XChat env
+    xchat_handle = _sanitize_Handle(env_vars.get("XCHAT_HANDLE"))
+    xchat_user_id = str(env_vars.get("XCHAT_USER_ID") or "").strip()
+    xchat_configured = bool(env_vars.get("XCHAT_ACCESS_TOKEN") or xchat_handle or xchat_user_id)
 
     # 3. xurl CLI OAuth2 handle
     xurl_handle = _sanitize_Handle(xurl_info.get("primary_handle"))
     xurl_available = bool(xurl_info.get("available"))
     xurl_oauth_linked = bool(xurl_handle)
 
-    # 4. Config handle & USER.md fallback
+    # 4. Config handle
     cfg_handle = _sanitize_Handle(cfg.get("handle"))
-    user_md_handle = _detect_user_md_handle()
 
     # Collect all available handles in priority order
     available_handles: list[str] = []
@@ -531,7 +493,6 @@ def _detect_connection(requested_handle: str | None = None, requested_mode: str 
         xchat_handle,
         xurl_handle,
         *(xurl_info.get("handles") or []),
-        user_md_handle,
     ):
         if candidate and candidate not in available_handles:
             available_handles.append(candidate)
@@ -553,7 +514,6 @@ def _detect_connection(requested_handle: str | None = None, requested_mode: str 
         or env_handle
         or xchat_handle
         or xurl_handle
-        or user_md_handle
         or (available_handles[0] if available_handles else "NousResearch")
     )
     if active_handle and active_handle not in available_handles:
@@ -601,7 +561,7 @@ def _detect_connection(requested_handle: str | None = None, requested_mode: str 
         },
     ]
 
-    auto_linked = bool(env_handle or xchat_configured or xurl_oauth_linked or user_md_handle)
+    auto_linked = bool(env_handle or xchat_configured or xurl_oauth_linked)
     if xurl_oauth_linked:
         active_source = "xurl"
     elif xchat_configured:
@@ -1096,25 +1056,21 @@ def _run_x_search_query(
     allowed_x_handles: list[str] | None = None,
     excluded_x_handles: list[str] | None = None,
 ) -> dict[str, Any]:
-    """Call Hermes's built-in `x_search_tool` if available, with cooldown on 402/429."""
+    """Call Hermes's registered `x_search` tool via public `tools.registry`, with cooldown on 402/429."""
     global _x_search_cooldown_until
     if time.time() < _x_search_cooldown_until:
         return {}
     if not _check_x_search_available():
         return {}
     try:
-        from tools.x_search_tool import x_search_tool
+        from tools.registry import registry
 
-        prev_level = logging.getLogger("tools.x_search_tool").level
-        logging.getLogger("tools.x_search_tool").setLevel(logging.CRITICAL)
-        try:
-            raw = x_search_tool(
-                query=query,
-                allowed_x_handles=allowed_x_handles,
-                excluded_x_handles=excluded_x_handles,
-            )
-        finally:
-            logging.getLogger("tools.x_search_tool").setLevel(prev_level)
+        args: dict[str, Any] = {"query": query}
+        if allowed_x_handles is not None:
+            args["allowed_x_handles"] = allowed_x_handles
+        if excluded_x_handles is not None:
+            args["excluded_x_handles"] = excluded_x_handles
+        raw = registry.dispatch("x_search", args)
         data = json.loads(raw) if isinstance(raw, str) else raw
         if isinstance(data, dict) and data.get("error"):
             err_str = str(data.get("error"))
@@ -1123,7 +1079,7 @@ def _run_x_search_query(
             return {}
         return data if isinstance(data, dict) else {}
     except Exception as exc:
-        logger.debug("x_search_tool call failed: %s", exc)
+        logger.debug("x_search dispatch failed: %s", exc)
         return {}
 
 
@@ -1331,30 +1287,13 @@ def _run_xurl_v2(path: str, app_name: str | None = None, timeout: int = 20) -> d
 
 
 def _request_x_v2(path: str, handle: str | None = None) -> dict[str, Any]:
-    """Request an X API v2 endpoint using XCHAT_ACCESS_TOKEN (with refresh) or xurl CLI."""
+    """Request an X API v2 endpoint using a Hermes-scoped Bearer token or xurl CLI."""
     env_vars = _read_env_vars()
-    token = env_vars.get("XCHAT_ACCESS_TOKEN") or env_vars.get("X_BEARER_TOKEN")
+    token = env_vars.get("X_BEARER_TOKEN") or env_vars.get("XCHAT_ACCESS_TOKEN")
     if token:
         headers = {"Authorization": f"Bearer {token}", "User-Agent": USER_AGENT}
         try:
             resp = requests.get(f"https://api.x.com{path}", headers=headers, timeout=15)
-            if resp.status_code == 401 and env_vars.get("XCHAT_REFRESH_TOKEN") and env_vars.get("XCHAT_CLIENT_ID"):
-                refresh_data = {
-                    "grant_type": "refresh_token",
-                    "refresh_token": env_vars["XCHAT_REFRESH_TOKEN"],
-                    "client_id": env_vars["XCHAT_CLIENT_ID"],
-                }
-                auth = (
-                    (env_vars["XCHAT_CLIENT_ID"], env_vars["XCHAT_CLIENT_SECRET"])
-                    if env_vars.get("XCHAT_CLIENT_SECRET")
-                    else None
-                )
-                r_tok = requests.post("https://api.x.com/2/oauth2/token", data=refresh_data, auth=auth, timeout=15)
-                if r_tok.status_code < 300:
-                    new_tok = r_tok.json().get("access_token")
-                    if new_tok:
-                        headers["Authorization"] = f"Bearer {new_tok}"
-                        resp = requests.get(f"https://api.x.com{path}", headers=headers, timeout=15)
             if resp.status_code == 200:
                 body = resp.json()
                 if not body.get("errors"):
