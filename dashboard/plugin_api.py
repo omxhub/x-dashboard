@@ -474,7 +474,7 @@ def _detect_connection(requested_handle: str | None = None, requested_mode: str 
 
     # Active handle selection
     active_handle = (
-        _sanitize_Handle(requested_handle) if _sanitize_Handle(requested_handle) not in hidden else ""
+        (_sanitize_Handle(requested_handle) if _sanitize_Handle(requested_handle) not in hidden else "")
         or (cfg_handle if cfg_handle not in hidden else "")
         or (env_handle if env_handle not in hidden else "")
         or (xurl_handle if xurl_handle not in hidden else "")
