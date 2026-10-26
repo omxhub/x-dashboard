@@ -13,6 +13,7 @@ export interface XStatus {
   auth_sources: XAuthSource[];
   handle: string;
   available_handles: string[];
+  hidden_handles?: string[];
   x_search_available: boolean;
   xurl_available: boolean;
   xchat_configured: boolean;
@@ -133,6 +134,7 @@ export interface XConfigUpdate {
   handle?: string;
   mode?: "free" | "auto" | "live_v2" | string;
   goals?: Partial<XGoals>;
+  hidden_handles?: string[];
 }
 
 export interface NormalizedXDashboardData {

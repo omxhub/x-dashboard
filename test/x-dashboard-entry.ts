@@ -2,7 +2,9 @@ import XDashboardPage, {
   escapeCsvCell,
   formatCompactNumber,
   formatRelativeTime,
+  formatSubscriptionBadge,
   safeExternalUrl,
+  selectTrajectoryDateLabelIndices,
 } from "../src/XDashboardPage";
 import {
   configureXDashboardHost,
@@ -29,7 +31,9 @@ export {
   normalizeSummaryPayload,
   formatCompactNumber,
   formatRelativeTime,
+  formatSubscriptionBadge,
   safeExternalUrl,
+  selectTrajectoryDateLabelIndices,
   escapeCsvCell,
   X_DASHBOARD_DESKTOP_PATH,
   createXDashboardContributions,
