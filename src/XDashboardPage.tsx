@@ -115,6 +115,73 @@ export function highlightEntities(text: string): ReactNode[] {
   });
 }
 
+export function formatSubscriptionBadge(raw: string | undefined | null): string {
+  const val = (raw || "").trim();
+  if (!val) return "Premium";
+  const norm = val.toLowerCase().replace(/[\s_-]+/g, "");
+  if (norm === "premiumplus" || norm === "premium+") return "Premium+";
+  if (norm === "premiumbasic") return "Premium Basic";
+  if (norm === "premiumbusiness" || norm === "business") return "Verified Org";
+  if (norm === "government" || norm === "grey" || norm === "gray") return "Government";
+  if (norm === "blue" || norm === "premium") return "Premium";
+  if (norm === "none" || norm === "free") return "Standard";
+  return val
+    .replace(/([a-z])([A-Z])/g, "$1 $2")
+    .replace(/[_-]+/g, " ")
+    .trim();
+}
+
+export function selectTrajectoryDateLabelIndices(
+  chartPosts: Pick<XPost, "created_at">[],
+  selectedIndex: number,
+  minGapPx = 38,
+): Set<number> {
+  const count = chartPosts.length;
+  if (count === 0) return new Set();
+  const slotW = 656 / Math.max(1, count);
+  const barW = Math.max(8, Math.min(26, slotW * 0.64));
+  const getCenterX = (idx: number) => 12 + idx * slotW + (slotW - barW) / 2 + barW / 2;
+
+  const dateGroups: { dateStr: string; indices: number[] }[] = [];
+  const groupByDate = new Map<string, { dateStr: string; indices: number[] }>();
+
+  for (let idx = 0; idx < count; idx++) {
+    const dateStr = (chartPosts[idx]?.created_at || "").slice(5, 10);
+    if (!dateStr) continue;
+    let group = groupByDate.get(dateStr);
+    if (!group) {
+      group = { dateStr, indices: [] };
+      groupByDate.set(dateStr, group);
+      dateGroups.push(group);
+    }
+    group.indices.push(idx);
+  }
+
+  const chosen: number[] = [];
+  for (const group of dateGroups) {
+    const isSelectedGroup = group.indices.includes(selectedIndex);
+    if (isSelectedGroup) {
+      const selX = getCenterX(selectedIndex);
+      while (
+        chosen.length > 0 &&
+        Math.abs(selX - getCenterX(chosen[chosen.length - 1])) < minGapPx
+      ) {
+        chosen.pop();
+      }
+      chosen.push(selectedIndex);
+      continue;
+    }
+
+    const prevX = chosen.length > 0 ? getCenterX(chosen[chosen.length - 1]) : -Infinity;
+    const candidate = group.indices.find((idx) => getCenterX(idx) - prevX >= minGapPx);
+    if (candidate !== undefined) {
+      chosen.push(candidate);
+    }
+  }
+
+  return new Set(chosen);
+}
+
 function getEngagementTier(rate: number): { label: string; className: string } {
   if (rate >= 3.0) return { label: "Elite >3%", className: "xd-kpi-pill is-emerald" };
   if (rate >= 1.5) return { label: "Strong >1.5%", className: "xd-kpi-pill" };
@@ -483,7 +550,9 @@ export default function XDashboardPage() {
               >
                 <path d="M12.6 1h2.2L10 6.5 15.7 15h-4.4L7.8 9.9 3.6 15H1.4l5.1-5.9L1.1 1h4.5l3.1 4.6L12.6 1zm-.8 12.6h1.2L5.2 2.3H3.9l7.9 11.3z" />
               </svg>
-              <h1 className="xd-page-title">X Dashboard</h1>
+              <h1 className="xd-page-title" aria-label="X Dashboard">
+                Dashboard
+              </h1>
               <span
                 className={`xd-autolink-pill ${status?.auto_linked ? "is-linked" : ""}`}
                 data-testid="xd-autolink-pill"
@@ -619,8 +688,8 @@ export default function XDashboardPage() {
               <div className="xd-profile-titles">
                 <div className="xd-name-line">
                   <h2 className="xd-display-name">{account?.name || `@${handle}`}</h2>
-                  <span className="xd-sub-badge">
-                    {account?.subscription_type || "Premium"}
+                  <span className="xd-sub-badge" data-testid="xd-sub-badge">
+                    {formatSubscriptionBadge(account?.subscription_type)}
                   </span>
                   {account?.cost_incurred ? (
                     <span className="xd-kpi-pill is-emerald">
@@ -1103,6 +1172,11 @@ export default function XDashboardPage() {
                       const count = chartPosts.length;
                       const slotW = 656 / Math.max(1, count);
                       const barW = Math.max(8, Math.min(26, slotW * 0.64));
+                      const labelIndices = selectTrajectoryDateLabelIndices(
+                        chartPosts,
+                        selectedPostIndex,
+                        38,
+                      );
 
                       return (
                         <>
@@ -1117,16 +1191,8 @@ export default function XDashboardPage() {
                             const isSelected = idx === selectedPostIndex;
                             const isPeak = idx === peakIdx && count > 1;
                             const dateStr = (post.created_at || "").slice(5, 10);
-                            const prevDateStr =
-                              idx > 0
-                                ? (chartPosts[idx - 1]?.created_at || "").slice(5, 10)
-                                : "";
                             const showDateLabel =
-                              Boolean(dateStr) &&
-                              (idx === 0 ||
-                                idx === count - 1 ||
-                                isSelected ||
-                                dateStr !== prevDateStr);
+                              Boolean(dateStr) && labelIndices.has(idx);
 
                             return (
                               <g
@@ -1292,20 +1358,37 @@ export default function XDashboardPage() {
             </div>
 
             {/* Stacked Horizontal Mix Bar (matches Hermes Activity TokenMix) */}
-            <div className="xd-mix-stacked-bar" aria-hidden="true">
-              {mixItems.map((item) => {
-                const pct =
-                  totalInteractions > 0 ? (item.val / totalInteractions) * 100 : 20;
-                return (
-                  <div
-                    key={item.label}
-                    style={{
-                      width: `${Math.max(2, pct)}%`,
-                      background: item.color,
-                    }}
-                  />
-                );
-              })}
+            <div
+              className="xd-mix-stacked-bar"
+              data-testid="xd-mix-stacked-bar"
+              aria-hidden="true"
+            >
+              {totalInteractions > 0 ? (
+                mixItems
+                  .filter((item) => item.val > 0)
+                  .map((item) => {
+                    const pct = (item.val / totalInteractions) * 100;
+                    return (
+                      <div
+                        key={item.label}
+                        className="xd-mix-segment"
+                        data-mix-label={item.label}
+                        style={{
+                          width: `${Math.max(2, pct)}%`,
+                          background: item.color,
+                        }}
+                      />
+                    );
+                  })
+              ) : (
+                <div
+                  className="xd-mix-segment is-empty"
+                  style={{
+                    width: "100%",
+                    background: "color-mix(in srgb, currentColor 12%, transparent)",
+                  }}
+                />
+              )}
             </div>
 
             <div className="xd-mix-list">

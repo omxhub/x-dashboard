@@ -489,5 +489,173 @@ test("safeExternalUrl and escapeCsvCell harden external links and CSV exports", 
   assert.equal(escapeCsvCell(`=cmd|' /C calc'!A0${crlf}line2`), `"'=cmd|' /C calc'!A0 line2"`);
 });
 
+test("Xenia UI polish: single-X header title, 3x2 KPI grid, Premium+ badge formatter, deduplicated trajectory dates, and zero-value mix filtering", async () => {
+  const {
+    formatSubscriptionBadge,
+    selectTrajectoryDateLabelIndices,
+  } = await import("./.build/x-dashboard-page.mjs");
+
+  // 1. Subscription badge formatting
+  assert.equal(formatSubscriptionBadge("PremiumPlus"), "Premium+");
+  assert.equal(formatSubscriptionBadge("premium_plus"), "Premium+");
+  assert.equal(formatSubscriptionBadge("Premium+"), "Premium+");
+  assert.equal(formatSubscriptionBadge("PremiumBasic"), "Premium Basic");
+  assert.equal(formatSubscriptionBadge("Blue"), "Premium");
+  assert.equal(formatSubscriptionBadge(""), "Premium");
+
+  // 2. Trajectory X-axis date deduplication & min horizontal spacing
+  const eighteenPostsWithDuplicateEndDates = [
+    { created_at: "2026-10-22T12:00:00Z" },
+    { created_at: "2026-10-23T08:00:00Z" },
+    { created_at: "2026-10-23T14:00:00Z" },
+    { created_at: "2026-10-23T19:00:00Z" },
+    { created_at: "2026-10-24T11:00:00Z" },
+    { created_at: "2026-10-25T09:00:00Z" },
+    { created_at: "2026-10-25T15:00:00Z" },
+    { created_at: "2026-10-25T21:00:00Z" },
+    { created_at: "2026-10-26T01:00:00Z" },
+    { created_at: "2026-10-26T03:00:00Z" },
+    { created_at: "2026-10-26T06:00:00Z" },
+    { created_at: "2026-10-26T09:00:00Z" },
+    { created_at: "2026-10-26T12:00:00Z" },
+    { created_at: "2026-10-26T14:00:00Z" },
+    { created_at: "2026-10-26T16:00:00Z" },
+    { created_at: "2026-10-26T18:00:00Z" },
+    { created_at: "2026-10-26T20:00:00Z" },
+    { created_at: "2026-10-26T22:00:00Z" },
+  ];
+  const labelIndices = selectTrajectoryDateLabelIndices(
+    eighteenPostsWithDuplicateEndDates,
+    0,
+    38,
+  );
+  const renderedDates = [...labelIndices].map((idx) =>
+    eighteenPostsWithDuplicateEndDates[idx].created_at.slice(5, 10),
+  );
+  assert.equal(
+    new Set(renderedDates).size,
+    renderedDates.length,
+    `each MM-DD date must appear at most once on X-axis, got: ${renderedDates.join(", ")}`,
+  );
+  assert.equal(
+    renderedDates.filter((d) => d === "10-26").length,
+    1,
+    "10-26 must appear exactly once even when 10 bars share 10-26",
+  );
+
+  // Render component with raw "PremiumPlus", zero bookmarks, and multiple same-day posts
+  const mockSummaryPolish = structuredClone(MOCK_SUMMARY_V2);
+  mockSummaryPolish.account.subscription_type = "PremiumPlus";
+  mockSummaryPolish.posts.items = [
+    {
+      id: "p-26-b",
+      text: "Second post on 10-26",
+      created_at: "2026-10-26T18:00:00Z",
+      impressions: 420,
+      likes: 25,
+      reposts: 2,
+      replies: 8,
+      quotes: 1,
+      bookmarks: 0,
+    },
+    {
+      id: "p-26-a",
+      text: "First post on 10-26",
+      created_at: "2026-10-26T09:00:00Z",
+      impressions: 510,
+      likes: 30,
+      reposts: 3,
+      replies: 12,
+      quotes: 2,
+      bookmarks: 0,
+    },
+    {
+      id: "p-25",
+      text: "Earlier post on 10-25",
+      created_at: "2026-10-25T15:00:00Z",
+      impressions: 790,
+      likes: 40,
+      reposts: 4,
+      replies: 16,
+      quotes: 2,
+      bookmarks: 0,
+    },
+  ];
+  mockSummaryPolish.posts.count = 3;
+
+  configureXDashboardHost({
+    fetchJSON: async (url) => {
+      if (url.startsWith("/api/plugins/x-dashboard/summary")) {
+        return structuredClone(mockSummaryPolish);
+      }
+      return { ok: true };
+    },
+    navigateTo: () => {},
+  });
+
+  container = window.document.createElement("div");
+  window.document.body.appendChild(container);
+  root = createRoot(container);
+  act(() => {
+    root.render(h(XDashboardPage));
+  });
+  await settle(25);
+
+  // Header: single X logo + "Dashboard" title
+  const pageTitle = container.querySelector(".xd-page-title");
+  const pageIcon = container.querySelector(".xd-page-icon");
+  assert.ok(pageIcon, "must render stylized X SVG icon in header");
+  assert.equal(
+    pageTitle?.textContent?.trim(),
+    "Dashboard",
+    "visible h1 title next to X icon must be 'Dashboard' (no duplicate X)",
+  );
+  assert.equal(pageTitle?.getAttribute("aria-label"), "X Dashboard");
+
+  // CSS: 3x2 KPI grid & stretched bottom analytics grid
+  const styleContent = container.querySelector("style")?.textContent || "";
+  assert.match(
+    styleContent,
+    /\.xd-kpi-grid\s*\{[^}]*grid-template-columns:\s*repeat\(3,\s*minmax\(0,\s*1fr\)\)/,
+    ".xd-kpi-grid must default to a 3-column (3x2) bento layout on desktop",
+  );
+  assert.match(
+    styleContent,
+    /\.xd-analytics-grid\s*\{[^}]*align-items:\s*stretch/,
+    ".xd-analytics-grid must stretch both bottom panels to equal height",
+  );
+
+  // Subscription badge: "PremiumPlus" -> "Premium+"
+  const subBadge = container.querySelector('[data-testid="xd-sub-badge"]');
+  assert.equal(subBadge?.textContent?.trim(), "Premium+");
+
+  // Chart axis labels: "10-26" rendered only once
+  const axisLabels = [...container.querySelectorAll(".xd-chart-axis-text")].map((el) =>
+    el.textContent?.trim(),
+  );
+  assert.deepEqual(
+    axisLabels,
+    ["10-25", "10-26"],
+    "trajectory chart X-axis must deduplicate 10-26 so each date appears once",
+  );
+
+  // Mix stacked bar: Bookmarks is 0, so only 4 non-zero segments render
+  const mixSegments = [
+    ...container.querySelectorAll('[data-testid="xd-mix-stacked-bar"] .xd-mix-segment'),
+  ];
+  const segmentLabels = mixSegments.map((el) => el.getAttribute("data-mix-label"));
+  assert.deepEqual(
+    segmentLabels,
+    ["Likes", "Reposts", "Replies", "Quotes"],
+    "zero-value Bookmarks must not render a slice in .xd-mix-stacked-bar",
+  );
+
+  act(() => {
+    root.unmount();
+  });
+  container.remove();
+});
+
+
 
 
