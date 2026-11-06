@@ -196,6 +196,8 @@ def _load_dashboard_config() -> dict[str, Any]:
     if mode not in VALID_MODES:
         mode = "auto"
     handle = _sanitize_Handle(raw.get("handle") or settings.get("handle"))
+    hidden_handles_raw = raw.get("hidden_handles") if isinstance(raw.get("hidden_handles"), list) else []
+    hidden_handles = [_sanitize_Handle(h) for h in hidden_handles_raw if _sanitize_Handle(h)]
     enable_x_search = _coerce_bool(
         raw["enable_x_search"] if "enable_x_search" in raw else settings.get("enable_x_search"),
         default=False,
@@ -205,6 +207,7 @@ def _load_dashboard_config() -> dict[str, Any]:
         "default_mode": mode,
         "mode": mode,
         "enable_x_search": enable_x_search,
+        "hidden_handles": hidden_handles,
         "goals": goals,
         "updated_at": raw.get("updated_at"),
     }
@@ -225,6 +228,10 @@ def _save_dashboard_config(update: dict[str, Any]) -> dict[str, Any]:
             current["mode"] = m
     if "enable_x_search" in update and update["enable_x_search"] is not None:
         current["enable_x_search"] = _coerce_bool(update["enable_x_search"], default=False)
+    if "hidden_handles" in update and isinstance(update["hidden_handles"], list):
+        current["hidden_handles"] = [
+            _sanitize_Handle(h) for h in update["hidden_handles"] if _sanitize_Handle(h)
+        ]
     if isinstance(update.get("goals"), dict):
         g = update["goals"]
         if g.get("verified_followers") is not None:
@@ -443,6 +450,7 @@ def _detect_connection(requested_handle: str | None = None, requested_mode: str 
     cfg_handle = _sanitize_Handle(cfg.get("handle"))
 
     # Collect all available handles in priority order
+    hidden = set(cfg.get("hidden_handles") or [])
     available_handles: list[str] = []
     for candidate in (
         _sanitize_Handle(requested_handle),
@@ -451,7 +459,7 @@ def _detect_connection(requested_handle: str | None = None, requested_mode: str 
         xurl_handle,
         *(xurl_info.get("handles") or []),
     ):
-        if candidate and candidate not in available_handles:
+        if candidate and candidate not in available_handles and candidate not in hidden:
             available_handles.append(candidate)
 
     # Also include handles from existing snapshot files
@@ -459,17 +467,17 @@ def _detect_connection(requested_handle: str | None = None, requested_mode: str 
         for snap_file in sorted(_cache_dir().glob("snapshot_*.json")):
             stem = snap_file.stem.replace("snapshot_", "", 1)
             sh = _sanitize_Handle(stem)
-            if sh and sh not in available_handles and sh != "default":
+            if sh and sh not in available_handles and sh != "default" and sh not in hidden:
                 available_handles.append(sh)
     except Exception:
         pass
 
     # Active handle selection
     active_handle = (
-        _sanitize_Handle(requested_handle)
-        or cfg_handle
-        or env_handle
-        or xurl_handle
+        (_sanitize_Handle(requested_handle) if _sanitize_Handle(requested_handle) not in hidden else "")
+        or (cfg_handle if cfg_handle not in hidden else "")
+        or (env_handle if env_handle not in hidden else "")
+        or (xurl_handle if xurl_handle not in hidden else "")
         or (available_handles[0] if available_handles else "NousResearch")
     )
     if active_handle and active_handle not in available_handles:
@@ -545,6 +553,7 @@ def _detect_connection(requested_handle: str | None = None, requested_mode: str 
         "auth_sources": auth_sources,
         "handle": active_handle,
         "available_handles": available_handles,
+        "hidden_handles": list(hidden),
         "x_search_available": x_search_avail,
         "x_search_enabled": x_search_enabled,
         "xurl_available": xurl_available,
