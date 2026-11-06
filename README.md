@@ -21,13 +21,20 @@
 Most X/Twitter analytics tools either lock creators behind expensive monthly SaaS subscriptions or burn paid X API credits on every page refresh. **X Dashboard** is engineered specifically for the **Hermes Agent** ecosystem:
 
 1. **⚡ 100% Free Mode ($0.00) by Default**: Routine refreshes use zero-cost public syndication (`api.fxtwitter.com` / `api.vxtwitter.com`), Jina Reader timeline discovery (`r.jina.ai`), and local snapshot caching (`<hermes_home>/plugin-data/x-dashboard/`) so viewing your dashboard **never burns X API or xAI credits**. Additional post and mention discovery via Hermes's paid `x_search` tool is strictly opt-in (`enable_x_search: true`, default `false`).
-2. **🔗 Scoped Hermes Account Resolution**: Automatically resolves your X handle from dashboard settings (`<hermes_home>/plugin-data/x-dashboard/config.json` or `plugins.entries.x-dashboard.settings`), Hermes-scoped `X_DASHBOARD_HANDLE`, or `xurl auth status` (when `xurl` is installed on `PATH`), or lets you type **any public `@handle`** immediately with **zero API keys required** (defaults to `@NousResearch` out of the box when no handle is configured).
-3. **🖥️ Dual-Host Native Architecture**: Ships both the **Hermes Web Dashboard IIFE bundle** (`dashboard/dist/index.js`) and the **Hermes Desktop ESM plugin** (`desktop/plugin.js`) from a single TypeScript + React codebase — prebuilt and committed so installs never need to run a build step.
+2. **🔗 Scoped Hermes Account Resolution**: Automatically resolves your X handle from dashboard settings (`<hermes_home>/plugin-data/x-dashboard/config.json` or `plugins.entries.***REDACTED***`), Hermes-scoped `X_DASHBOARD_HANDLE`, or `xurl auth status` (when `xurl` is installed on `PATH`), or lets you type **any public `@handle`** immediately with **zero API keys required** (defaults to `@NousResearch` out of the box when no handle is configured).
+3. **🖥️ Dual-Host Native Architecture**: Ships both the **Hermes Web Dashboard IIFE bundle** (`dashboard/dist/index.js`) and the **Hermes Desktop ESM plugin** (`desktop/plugin.js`) from a single TypeScript + React codebase — prebuilt and committed so installs never need to run a build step. The Desktop bundle follows the native Hermes Desktop design system (single-X header, dark-first, theme-adaptive) so the plugin feels like a first-party panel.
 4. **📊 Bespoke Interactive SVG Visual Analytics**:
-   - **6-Card Executive KPI Bento Grid** with live follower/following ratios, history sparklines, engagement quality tiers (`Elite >3%`, `Strong >1.5%`, `Steady`), and community pulse metrics.
+   - **6-Card Executive KPI Bento Grid (3×2)** with live follower/following ratios, history sparklines, engagement quality tiers (`Elite >3%`, `Strong >1.5%`, `Steady`), and community pulse metrics — laid out as a clean 3×2 rhythm under a polished single-X header.
    - **Editable Creator Monetization Goal Trackers** for **Verified Followers** (default `500`) and **Organic Impressions** (`500K` / `5M` presets or custom inline target) with radial + linear progress gauges and velocity pace estimates.
-   - **Interactive 20-Post Impressions & Engagement Trajectory SVG Chart** with hover/click HUD inspection, **Engagement Mix Breakdown**, **24-Hour UTC Posting Cadence Heatmap**, and **#1 Top Performing Post Spotlight**.
+   - **Bars-Only 20-Post Impressions & Engagement Trajectory SVG Chart** with click-to-inspect bars (reach, saves, engagement rate HUD), peak pill, and deduplicated date labels so crowded days don't repeat, plus **Engagement Mix Breakdown**, **24-Hour UTC Posting Cadence Heatmap**, and **#1 Top Performing Post Spotlight**.
    - **Interactive Posts Explorer, Mentions Radar & Auto-Auth Inspector** with instant keyword/hashtag search, filter pills (`All`, `Originals`, `Replies`, `Media`), multi-metric sorting, and CSV/JSON export.
+
+## Detected Handle Management
+
+- **Always-visible remove (×) on detected handle pills**: any auto-detected `@handle` pill shows a small × button on its corner, even when it's the only handle present.
+- **Persisted removals**: removing a handle saves it to `hidden_handles` in the backend config (`<hermes_home>/plugin-data/x-dashboard/config.json`), so it stays hidden across reloads.
+- **Smart active switch**: if you remove the currently active handle, the dashboard switches to the next available detected handle — no empty states, no manual retyping.
+- **Parenthesized hidden filter**: the `active_handle` selection correctly excludes hidden handles (parenthesized filter), so a hidden handle can never resurface as active after a refresh.
 
 ---
 
@@ -139,8 +146,8 @@ x-dashboard/
 ├── desktop/
 │   └── plugin.js               # Prebuilt Hermes Desktop ESM bundle
 ├── src/
-│   ├── XDashboardPage.tsx      # Main Creator & Agent Command Center UI
-│   ├── x-dashboard.css         # Dark-first, Hermes theme-adaptive glassmorphism CSS
+│   ├── XDashboardPage.tsx      # Main Creator & Agent Command Center UI (single-X header, 3×2 KPI bento, bars-only chart, handle pills)
+│   ├── x-dashboard.css         # Dark-first, Hermes Desktop native, theme-adaptive glassmorphism CSS
 │   ├── sdk.ts                  # Dual-host API bridge (Web fetchJSON + Desktop ctx.rest)
 │   ├── types.ts                # Unified normalization & client analytics
 │   ├── index.tsx               # Web Dashboard __HERMES_PLUGINS__ entry
