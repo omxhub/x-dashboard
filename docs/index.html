@@ -271,11 +271,11 @@
     }
     .xd-kpi-grid {
       display: grid;
-      grid-template-columns: repeat(6, minmax(0, 1fr));
+      grid-template-columns: repeat(3, minmax(0, 1fr));
       gap: 12px;
     }
-    @media (max-width: 1200px) { .xd-kpi-grid { grid-template-columns: repeat(3, 1fr); } }
-    @media (max-width: 680px) { .xd-kpi-grid { grid-template-columns: repeat(2, 1fr); } }
+    @media (max-width: 900px) { .xd-kpi-grid { grid-template-columns: repeat(2, 1fr); } }
+    @media (max-width: 560px) { .xd-kpi-grid { grid-template-columns: 1fr; } }
     .xd-kpi-card {
       border-radius: 14px;
       padding: 14px 16px;
@@ -423,7 +423,7 @@
   <section class="showcase-screenshot-wrap">
     <div class="showcase-screenshot-card">
       <div class="showcase-screenshot-bar">
-        <span>🖥️ <strong>Live in Hermes Desktop</strong> — Native Plugin View (<code>/x-dashboard</code>)</span>
+        <span>🖥️ <strong>Live in Hermes Desktop (v0.2.0)</strong> — Native Hermes Activity UI · Single-X Header · 3×2 KPI Bento · Detected Handle Pills (<code>/x-dashboard</code>)</span>
         <span style="color:#34d399;font-family:var(--xd-font-mono);">● Auto-Linked · $0.00 Free Mode</span>
       </div>
       <img src="./assets/x-dashboard-preview.png" alt="X Dashboard running inside Hermes Desktop" loading="eager" />

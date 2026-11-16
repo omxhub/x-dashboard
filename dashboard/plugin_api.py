@@ -219,6 +219,9 @@ def _save_dashboard_config(update: dict[str, Any]) -> dict[str, Any]:
         h = _sanitize_Handle(str(update["handle"]))
         if h:
             current["handle"] = h
+            current["hidden_handles"] = [
+                existing for existing in current.get("hidden_handles", []) if existing.lower() != h.lower()
+            ]
         elif str(update["handle"]).strip() == "":
             current["handle"] = ""
     if "mode" in update or "default_mode" in update:
@@ -451,33 +454,38 @@ def _detect_connection(requested_handle: str | None = None, requested_mode: str 
 
     # Collect all available handles in priority order
     hidden = set(cfg.get("hidden_handles") or [])
+    hidden_lower = {h.lower() for h in hidden if h}
+    req_clean = _sanitize_Handle(requested_handle)
     available_handles: list[str] = []
     for candidate in (
-        _sanitize_Handle(requested_handle),
+        req_clean,
         cfg_handle,
         env_handle,
         xurl_handle,
         *(xurl_info.get("handles") or []),
     ):
-        if candidate and candidate not in available_handles and candidate not in hidden:
-            available_handles.append(candidate)
+        if not candidate or candidate in available_handles:
+            continue
+        if candidate.lower() in hidden_lower and candidate.lower() != req_clean.lower():
+            continue
+        available_handles.append(candidate)
 
     # Also include handles from existing snapshot files
     try:
         for snap_file in sorted(_cache_dir().glob("snapshot_*.json")):
             stem = snap_file.stem.replace("snapshot_", "", 1)
             sh = _sanitize_Handle(stem)
-            if sh and sh not in available_handles and sh != "default" and sh not in hidden:
+            if sh and sh not in available_handles and sh != "default" and sh.lower() not in hidden_lower:
                 available_handles.append(sh)
     except Exception:
         pass
 
-    # Active handle selection
+    # Active handle selection (explicit requested_handle always wins)
     active_handle = (
-        (_sanitize_Handle(requested_handle) if _sanitize_Handle(requested_handle) not in hidden else "")
-        or (cfg_handle if cfg_handle not in hidden else "")
-        or (env_handle if env_handle not in hidden else "")
-        or (xurl_handle if xurl_handle not in hidden else "")
+        req_clean
+        or (cfg_handle if cfg_handle.lower() not in hidden_lower else "")
+        or (env_handle if env_handle.lower() not in hidden_lower else "")
+        or (xurl_handle if xurl_handle.lower() not in hidden_lower else "")
         or (available_handles[0] if available_handles else "NousResearch")
     )
     if active_handle and active_handle not in available_handles:

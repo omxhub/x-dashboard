@@ -346,7 +346,21 @@ export default function XDashboardPage() {
     const cleaned = handleInput.trim().replace(/^@+/, "");
     if (!cleaned) return;
     setHandleInput(cleaned);
-    await saveDashboardConfig({ handle: cleaned, mode: activeMode }).catch(() => undefined);
+    setRemovedHandles((prev) => {
+      if (!prev.size) return prev;
+      const next = new Set(
+        [...prev].filter((item) => item.toLowerCase() !== cleaned.toLowerCase()),
+      );
+      return next;
+    });
+    const nextHidden = (data?.status?.hidden_handles ?? []).filter(
+      (item) => item.toLowerCase() !== cleaned.toLowerCase(),
+    );
+    await saveDashboardConfig({
+      handle: cleaned,
+      mode: activeMode,
+      hidden_handles: nextHidden,
+    }).catch(() => undefined);
     await fetchDashboard({ handle: cleaned, mode: activeMode, refresh: false });
   };
 
@@ -708,56 +722,77 @@ export default function XDashboardPage() {
               </div>
             </div>
 
-            {status?.available_handles && status.available_handles.length > 1 ? (
-              <div className="xd-profile-badges">
-                <span className="xd-label">Detected:</span>
-                {status.available_handles
-                  .filter((h) => !removedHandles.has(h) && !(status?.hidden_handles ?? []).includes(h))
-                  .map((h) => (
-                    <span key={h} className="xd-detected-pill">
-                      <button
-                        type="button"
-                        className="xd-btn xd-btn-sm"
-                        onClick={() => {
-                          setHandleInput(h);
-                          void fetchDashboard({ handle: h, refresh: false });
-                        }}
+            {(() => {
+              const visibleHandles = (status?.available_handles ?? []).filter(
+                (h) =>
+                  !removedHandles.has(h) &&
+                  !(status?.hidden_handles ?? []).some(
+                    (hh) => hh.toLowerCase() === h.toLowerCase(),
+                  ),
+              );
+              return visibleHandles.length > 0 ? (
+                <div className="xd-profile-badges">
+                  <span className="xd-label">Detected:</span>
+                  {visibleHandles.map((h) => {
+                    const isActiveHandle = h.toLowerCase() === handle.toLowerCase();
+                    return (
+                      <span
+                        key={h}
+                        className={`xd-detected-pill${isActiveHandle ? " is-active" : ""}`}
                       >
-                        @{h}
-                      </button>
-                      <button
-                        type="button"
-                        className="xd-detected-pill-remove"
-                        aria-label={`Remove @${h}`}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          const nextHidden = [...(status?.hidden_handles ?? []), h].filter(
-                            (v, i, arr) => arr.indexOf(v) === i,
-                          );
-                          setRemovedHandles((prev) => {
-                            const next = new Set(prev);
-                            next.add(h);
-                            return next;
-                          });
-                          // Persist the removed handle to backend config
-                          void saveDashboardConfig({ hidden_handles: nextHidden }).catch(() => undefined);
-                          // If the removed handle is the active one, switch to the next available
-                          const nextRemaining = (status?.available_handles ?? []).filter(
-                            (ah) => ah !== h && !(status?.hidden_handles ?? []).includes(ah),
-                          );
-                          if (handleInput === h && nextRemaining.length > 0) {
-                            const nextHandle = nextRemaining[0];
-                            setHandleInput(nextHandle);
-                            void fetchDashboard({ handle: nextHandle, refresh: false });
-                          }
-                        }}
-                      >
-                        ×
-                      </button>
-                    </span>
-                  ))}
-              </div>
-            ) : null}
+                        <button
+                          type="button"
+                          className={`xd-btn xd-btn-sm${isActiveHandle ? " xd-btn-primary" : ""}`}
+                          data-testid={`xd-detected-handle-${h}`}
+                          onClick={() => {
+                            setHandleInput(h);
+                            void fetchDashboard({ handle: h, refresh: false });
+                          }}
+                        >
+                          @{h}
+                        </button>
+                        <button
+                          type="button"
+                          className="xd-detected-pill-remove"
+                          aria-label={`Remove @${h}`}
+                          title={`Hide @${h} from detected list`}
+                          data-testid={`xd-remove-handle-${h}`}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            const nextHidden = [...(status?.hidden_handles ?? []), h].filter(
+                              (v, i, arr) =>
+                                arr.findIndex((item) => item.toLowerCase() === v.toLowerCase()) ===
+                                i,
+                            );
+                            setRemovedHandles((prev) => {
+                              const next = new Set(prev);
+                              next.add(h);
+                              return next;
+                            });
+                            void saveDashboardConfig({ hidden_handles: nextHidden }).catch(
+                              () => undefined,
+                            );
+                            const nextRemaining = visibleHandles.filter(
+                              (ah) => ah.toLowerCase() !== h.toLowerCase(),
+                            );
+                            if (
+                              (handleInput.toLowerCase() === h.toLowerCase() || isActiveHandle) &&
+                              nextRemaining.length > 0
+                            ) {
+                              const nextHandle = nextRemaining[0];
+                              setHandleInput(nextHandle);
+                              void fetchDashboard({ handle: nextHandle, refresh: false });
+                            }
+                          }}
+                        >
+                          ×
+                        </button>
+                      </span>
+                    );
+                  })}
+                </div>
+              ) : null;
+            })()}
           </div>
 
           {account?.description ? (

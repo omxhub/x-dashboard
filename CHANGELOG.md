@@ -2,6 +2,18 @@
 
 All notable changes to the **X Dashboard** plugin for Hermes Web Dashboard and Hermes Desktop.
 
+## 0.2.0 — 2026-11-16
+
+- **Hermes Desktop Native Design System Overhaul**:
+  - Redesigned the entire surface (`src/XDashboardPage.tsx` and `src/x-dashboard.css`) to match native Hermes Desktop Activity, Honcho, and Quota panels with theme-variable bindings (`--background`, `--foreground`, `--ui-*`, `--chrome-*`), flat precision surfaces, `10px` uppercase tracking labels, and `tabular-nums` telemetry.
+  - Added single-X stylized SVG header (`Dashboard`) with inline `@handle` switcher, **$0.00 Free Mode** refresh, on-demand **⚡ Sync Official X API**, and JSON/CSV export controls.
+  - Refined the **Executive KPI Bento Grid** to a responsive **3×2** layout on desktop with `Premium+` subscription badge formatting.
+  - Upgraded the **Impressions & Engagement Trajectory SVG Chart** to a clean bars-only design with deduplicated `MM-DD` X-axis labels, minimum horizontal spacing, and peak/selected value pills.
+  - Filtered zero-value slices from the stacked **Engagement Mix** bar and aligned the **24-Hour UTC Posting Activity** cadence grid across all 24 hours (`00h → 23h`).
+- **Detected Handle Pill Management & Persistence**:
+  - Added an inline remove (`×`) button on every detected `@handle` pill (even when a single handle is present) that persists removed handles to `hidden_handles` in `<hermes_home>/plugin-data/x-dashboard/config.json`.
+  - Automatically switches to the next available handle when the active handle is removed, and automatically unhides any handle when manually switched via the `@handle` input bar.
+
 ## 0.1.0 — 2026-10-25
 
 - **100% Free Mode (`$0.00`) by Default**: Routine refreshes use zero-cost public syndication (`api.fxtwitter.com` / `api.vxtwitter.com`, Jina Reader `r.jina.ai`, and local snapshot caching in `<hermes_home>/plugin-data/x-dashboard/`) so viewing your dashboard never burns X API or xAI credits. Paid `x_search` discovery is strictly opt-in (`enable_x_search: false` by default).

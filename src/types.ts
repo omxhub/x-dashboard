@@ -351,6 +351,7 @@ export function normalizeSummaryPayload(raw: XSummaryPayload): NormalizedXDashbo
       Array.isArray(rawStatus.available_handles) && rawStatus.available_handles.length > 0
         ? rawStatus.available_handles
         : [handle],
+    hidden_handles: Array.isArray(rawStatus.hidden_handles) ? rawStatus.hidden_handles : [],
     x_search_available: Boolean(rawStatus.x_search_available),
     xurl_available: Boolean(rawStatus.xurl_available),
     xchat_configured: Boolean(rawStatus.xchat_configured),

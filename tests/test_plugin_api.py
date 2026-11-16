@@ -346,6 +346,31 @@ class PluginApiTestCase(unittest.TestCase):
         self.assertIsNone(plugin_api._normalize_external_url("javascript:alert(1)"))
         self.assertIsNone(plugin_api._normalize_external_url("data:text/html,hi"))
 
+    @patch.object(plugin_api, "_get_xurl_auth_info")
+    def test_hidden_handles_filtering_and_manual_unhide_on_switch(self, mock_xurl: MagicMock) -> None:
+        mock_xurl.return_value = {
+            "available": True,
+            "apps": [{"name": "omx0r-xurl", "is_default": True, "oauth2_handle": "omx0r"}],
+            "default_app": "omx0r-xurl",
+            "handles": ["omx0r", "NousResearch"],
+            "primary_handle": "omx0r",
+            "has_bearer": False,
+        }
+        # Hide omx0r -> active handle must switch to NousResearch
+        plugin_api.update_config({"hidden_handles": ["omx0r"]})
+        st1 = plugin_api.status()
+        self.assertEqual(st1["handle"], "NousResearch")
+        self.assertNotIn("omx0r", st1["available_handles"])
+        self.assertIn("omx0r", st1["hidden_handles"])
+
+        # Explicitly saving handle="omx0r" must unhide it automatically
+        res = plugin_api.update_config({"handle": "omx0r"})
+        self.assertEqual(res["config"]["handle"], "omx0r")
+        self.assertNotIn("omx0r", res["config"]["hidden_handles"])
+        st2 = plugin_api.status()
+        self.assertEqual(st2["handle"], "omx0r")
+        self.assertIn("omx0r", st2["available_handles"])
+
 
 if __name__ == "__main__":
     unittest.main()

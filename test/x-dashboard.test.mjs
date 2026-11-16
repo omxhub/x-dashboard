@@ -656,6 +656,84 @@ test("Xenia UI polish: single-X header title, 3x2 KPI grid, Premium+ badge forma
   container.remove();
 });
 
+test("Detected handle pills render even for a single handle, support removing with x, and unhide when manually switched", async () => {
+  const singleHandleSummary = structuredClone(MOCK_SUMMARY_V2);
+  singleHandleSummary.status.available_handles = ["omx0r", "NousResearch"];
+  singleHandleSummary.status.hidden_handles = [];
+  const configPayloads = [];
+
+  configureXDashboardHost({
+    fetchJSON: async (url, init) => {
+      if (url.startsWith("/api/plugins/x-dashboard/config") && init?.method === "POST") {
+        const body = JSON.parse(init.body);
+        configPayloads.push(body);
+        if (Array.isArray(body.hidden_handles)) {
+          singleHandleSummary.status.hidden_handles = body.hidden_handles;
+        }
+        return { ok: true, config: body };
+      }
+      if (url.startsWith("/api/plugins/x-dashboard/summary")) {
+        const u = new URL(url, "http://localhost");
+        const requested = u.searchParams.get("handle");
+        const clone = structuredClone(singleHandleSummary);
+        if (requested) {
+          clone.status.handle = requested;
+          clone.account.username = requested;
+        }
+        return clone;
+      }
+      return { ok: true };
+    },
+    navigateTo: () => {},
+  });
+
+  container = window.document.createElement("div");
+  window.document.body.appendChild(container);
+  root = createRoot(container);
+  act(() => {
+    root.render(h(XDashboardPage));
+  });
+  await settle(25);
+
+  const removeOmxBtn = container.querySelector('[data-testid="xd-remove-handle-omx0r"]');
+  assert.ok(removeOmxBtn, "must render remove button on @omx0r detected pill");
+
+  await act(async () => {
+    removeOmxBtn.click();
+    await settle(25);
+  });
+
+  assert.ok(
+    configPayloads.some((p) => Array.isArray(p.hidden_handles) && p.hidden_handles.includes("omx0r")),
+    "clicking remove must persist hidden_handles to backend config",
+  );
+  // Even with only 1 remaining handle (@NousResearch), the detected pill must still render
+  const remainingPill = container.querySelector('[data-testid="xd-detected-handle-NousResearch"]');
+  assert.ok(remainingPill, "single remaining handle pill must still be visible");
+
+  // Manually switching back to @omx0r via form submit must unhide it
+  const input = container.querySelector('[data-testid="xd-handle-input"]');
+  const form = input.closest("form");
+  await act(async () => {
+    const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value").set;
+    setter.call(input, "@omx0r");
+    input.dispatchEvent(new window.Event("input", { bubbles: true }));
+    input.dispatchEvent(new window.Event("change", { bubbles: true }));
+  });
+  await act(async () => {
+    form.dispatchEvent(new window.Event("submit", { bubbles: true, cancelable: true }));
+    await settle(25);
+  });
+
+  const restoredPill = container.querySelector('[data-testid="xd-detected-handle-omx0r"]');
+  assert.ok(restoredPill, "manually switching to @omx0r must unhide and restore its detected pill");
+
+  act(() => {
+    root.unmount();
+  });
+  container.remove();
+});
+
 
 
 
