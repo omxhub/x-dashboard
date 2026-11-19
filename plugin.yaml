@@ -6,7 +6,7 @@
 name: x-dashboard
 label: X Dashboard
 description: Zero-cost & auto-linked X analytics dashboard for Hermes Desktop and Web.
-version: 0.2.0
+version: 0.2.1
 author: Omar (@omx0r)
 manifest_version: 1
 requires_env:

@@ -1,4 +1,4 @@
-"""FastAPI router for the x-dashboard Hermes dashboard plugin (v0.1.0).
+"""FastAPI router for the x-dashboard Hermes dashboard plugin (v0.2.1).
 
 Features:
 - Zero secret leakage: never exposes access tokens, refresh tokens, client secrets, or raw bearer tokens.
@@ -48,7 +48,8 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
-USER_AGENT = "HermesXDashboard/0.1"
+__version__ = "0.2.1"
+USER_AGENT = "HermesXDashboard/0.2"
 DEFAULT_TTL_SECONDS = 300
 MAX_HISTORY_POINTS = 90
 DEFAULT_GOALS = {"verified_followers": 500, "impressions": 500000}
@@ -1605,7 +1606,7 @@ def health() -> dict[str, Any]:
     conn = _detect_connection()
     return _scrub_secrets({
         "ok": True,
-        "version": "0.1.0",
+        "version": __version__,
         "app": conn.get("xurl_app"),
         "user": conn.get("handle"),
         "mode": conn.get("mode"),
@@ -1724,61 +1725,65 @@ def summary(
                 "fetched_at": fetched_at,
             })
 
-    # Fetch fresh data (concurrently in Free Mode for speed)
+    # Fetch fresh data (concurrently in Free Mode for speed), under the
+    # per-handle lock so concurrent refreshes cannot double-fetch or race
+    # the snapshot write.
     if resolved_mode != "live_v2":
-        cached_acct = snap.get("account") if isinstance(snap.get("account"), dict) else None
-        cached_posts = snap.get("posts") if isinstance(snap.get("posts"), list) else None
-        cached_mentions = snap.get("mentions") if isinstance(snap.get("mentions") or [], list) else None
+        with _get_handle_lock(resolved_handle):
+            snap = _read_json_file(_snapshot_path(resolved_handle))
+            cached_acct = snap.get("account") if isinstance(snap.get("account"), dict) else None
+            cached_posts = snap.get("posts") if isinstance(snap.get("posts"), list) else None
+            cached_mentions = snap.get("mentions") if isinstance(snap.get("mentions") or [], list) else None
 
-        with concurrent.futures.ThreadPoolExecutor(max_workers=3) as pool:
-            f_acct = pool.submit(_fetch_account_free, resolved_handle, cached_acct)
-            f_posts = pool.submit(_fetch_posts_free, resolved_handle, limit, cached_posts)
-            f_mentions = pool.submit(_fetch_mentions_free, resolved_handle, min(limit, 15), cached_mentions)
+            with concurrent.futures.ThreadPoolExecutor(max_workers=3) as pool:
+                f_acct = pool.submit(_fetch_account_free, resolved_handle, cached_acct)
+                f_posts = pool.submit(_fetch_posts_free, resolved_handle, limit, cached_posts)
+                f_mentions = pool.submit(_fetch_mentions_free, resolved_handle, min(limit, 15), cached_mentions)
 
-            acct_data = f_acct.result()
-            posts_items, freshest_author = f_posts.result()
-            mentions_items = f_mentions.result()
+                acct_data = f_acct.result()
+                posts_items, freshest_author = f_posts.result()
+                mentions_items = f_mentions.result()
 
-        if not acct_data.get("ok") and freshest_author:
-            acct_data = _normalize_fx_profile(freshest_author, resolved_handle, cached_account=cached_acct)
+            if not acct_data.get("ok") and freshest_author:
+                acct_data = _normalize_fx_profile(freshest_author, resolved_handle, cached_account=cached_acct)
 
-        updated_snap = _update_snapshot_cache(
-            resolved_handle,
-            account=acct_data if acct_data.get("ok") else None,
-            posts=posts_items,
-            mentions=mentions_items,
-            source_mode="free",
-        )
-        final_posts = (updated_snap.get("posts") or posts_items)[:limit]
-        final_mentions = (updated_snap.get("mentions") or mentions_items)[:limit]
-        analytics = _compute_posts_analytics(final_posts)
-        history = list(updated_snap.get("history") or [])
-        conn_updated = _detect_connection(requested_handle=resolved_handle, requested_mode=resolved_mode)
-        acct_data["auto_linked"] = conn_updated.get("auto_linked", True)
+            updated_snap = _update_snapshot_cache(
+                resolved_handle,
+                account=acct_data if acct_data.get("ok") else None,
+                posts=posts_items,
+                mentions=mentions_items,
+                source_mode="free",
+            )
+            final_posts = (updated_snap.get("posts") or posts_items)[:limit]
+            final_mentions = (updated_snap.get("mentions") or mentions_items)[:limit]
+            analytics = _compute_posts_analytics(final_posts)
+            history = list(updated_snap.get("history") or [])
+            conn_updated = _detect_connection(requested_handle=resolved_handle, requested_mode=resolved_mode)
+            acct_data["auto_linked"] = conn_updated.get("auto_linked", True)
 
-        return _scrub_secrets({
-            "ok": True,
-            "cached": False,
-            "handle": resolved_handle,
-            "mode": resolved_mode,
-            "source_mode": "free",
-            "cost_incurred": "$0.00",
-            "status": conn_updated,
-            "account": acct_data,
-            "posts": {"ok": True, "count": len(final_posts), "items": final_posts, "analytics": analytics},
-            "mentions": {"ok": True, "count": len(final_mentions), "items": final_mentions},
-            "analytics": analytics,
-            "history": history,
-            "goals": conn_updated.get("goals") or dict(DEFAULT_GOALS),
-            "posts_count": len(final_posts),
-            "mentions_count": len(final_mentions),
-            "recent_posts_impressions": analytics.get("total_impressions", 0),
-            "verified_impressions_note": (
-                "X API does not expose verified-only impressions; total impressions shown. "
-                "Verified impressions are only in X Premium account analytics."
-            ),
-            "fetched_at": updated_snap.get("updated_at") or datetime.now(timezone.utc).isoformat(),
-        })
+            return _scrub_secrets({
+                "ok": True,
+                "cached": False,
+                "handle": resolved_handle,
+                "mode": resolved_mode,
+                "source_mode": "free",
+                "cost_incurred": "$0.00",
+                "status": conn_updated,
+                "account": acct_data,
+                "posts": {"ok": True, "count": len(final_posts), "items": final_posts, "analytics": analytics},
+                "mentions": {"ok": True, "count": len(final_mentions), "items": final_mentions},
+                "analytics": analytics,
+                "history": history,
+                "goals": conn_updated.get("goals") or dict(DEFAULT_GOALS),
+                "posts_count": len(final_posts),
+                "mentions_count": len(final_mentions),
+                "recent_posts_impressions": analytics.get("total_impressions", 0),
+                "verified_impressions_note": (
+                    "X API does not expose verified-only impressions; total impressions shown. "
+                    "Verified impressions are only in X Premium account analytics."
+                ),
+                "fetched_at": updated_snap.get("updated_at") or datetime.now(timezone.utc).isoformat(),
+            })
 
     # Live v2 mode (with automatic Free Mode fallback inside helpers)
     acct_res = _get_or_fetch_account(resolved_handle, mode="live_v2", refresh=True)

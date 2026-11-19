@@ -734,6 +734,46 @@ test("Detected handle pills render even for a single handle, support removing wi
   container.remove();
 });
 
+test("Sparklines render flat (no fabricated trend) when history and posts are empty", async () => {
+  const emptySummary = structuredClone(MOCK_SUMMARY_V2);
+  emptySummary.history = [];
+  emptySummary.posts = { ok: true, count: 0, items: [], analytics: emptySummary.analytics };
+
+  configureXDashboardHost({
+    fetchJSON: async (url) => {
+      if (url.startsWith("/api/plugins/x-dashboard/summary")) return emptySummary;
+      return { ok: true };
+    },
+    navigateTo: () => {},
+  });
+
+  container = window.document.createElement("div");
+  window.document.body.appendChild(container);
+  root = createRoot(container);
+  act(() => {
+    root.render(h(XDashboardPage));
+  });
+  await settle(25);
+
+  const polylines = [...container.querySelectorAll(".xd-sparkline polyline")];
+  assert.ok(polylines.length >= 2, "KPI sparklines must render");
+  for (const line of polylines) {
+    const ys = (line.getAttribute("points") || "")
+      .split(" ")
+      .map((pair) => Number(pair.split(",")[1]));
+    assert.ok(ys.length >= 2, "sparkline must have points");
+    assert.ok(
+      ys.every((y) => y === ys[0]),
+      `sparkline must be flat without real history, got ys=${JSON.stringify(ys)}`,
+    );
+  }
+
+  act(() => {
+    root.unmount();
+  });
+  container.remove();
+});
+
 
 
 

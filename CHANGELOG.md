@@ -2,6 +2,13 @@
 
 All notable changes to the **X Dashboard** plugin for Hermes Web Dashboard and Hermes Desktop.
 
+## 0.2.1 — 2026-11-19
+
+- **Version consistency**: `/health` now reports the real plugin version via a single `__version__` constant (was hardcoded `0.1.0`); refreshed module docstring and `User-Agent`.
+- **Request race guard**: dashboard fetches carry a monotonic sequence id — a slow stale response from an earlier handle switch/refresh can no longer overwrite newer data (`fetchSeqRef` in `XDashboardPage.tsx`).
+- **Snapshot write safety**: the Free Mode `/summary` fresh-fetch path now runs under the same per-handle lock as the slice endpoints, preventing duplicate upstream fetches and last-writer-wins snapshot races on concurrent refreshes.
+- **Honest sparklines**: KPI sparklines with fewer than 2 history points render a flat line instead of a fabricated upward curve.
+
 ## 0.2.0 — 2026-11-16
 
 - **Hermes Desktop Native Design System Overhaul**:

@@ -346,6 +346,12 @@ class PluginApiTestCase(unittest.TestCase):
         self.assertIsNone(plugin_api._normalize_external_url("javascript:alert(1)"))
         self.assertIsNone(plugin_api._normalize_external_url("data:text/html,hi"))
 
+    def test_health_reports_current_plugin_version(self) -> None:
+        res = plugin_api.health()
+        self.assertTrue(res["ok"])
+        self.assertEqual(res["version"], plugin_api.__version__)
+        self.assertEqual(res["version"], "0.2.1")
+
     @patch.object(plugin_api, "_get_xurl_auth_info")
     def test_hidden_handles_filtering_and_manual_unhide_on_switch(self, mock_xurl: MagicMock) -> None:
         mock_xurl.return_value = {

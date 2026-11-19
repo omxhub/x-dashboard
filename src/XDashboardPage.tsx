@@ -195,7 +195,12 @@ function Sparkline({
   values: number[];
   color?: string;
 }) {
-  const pts = values.length >= 2 ? values : [10, 12, 11, 14, 15, 18];
+  const pts =
+    values.length >= 2
+      ? values
+      : values.length === 1
+        ? [values[0], values[0]]
+        : [0, 0];
   const min = Math.min(...pts);
   const max = Math.max(...pts);
   const span = Math.max(1, max - min);
@@ -310,9 +315,11 @@ export default function XDashboardPage() {
   const [impressionsGoalInput, setImpressionsGoalInput] = useState<string>("500000");
   const [statusNotice, setStatusNotice] = useState<string | null>(null);
   const [removedHandles, setRemovedHandles] = useState<Set<string>>(new Set());
+  const fetchSeqRef = useRef(0);
 
   const fetchDashboard = useCallback(
     async (opts?: { handle?: string; mode?: "auto" | "free" | "live_v2"; refresh?: boolean }) => {
+      const seq = ++fetchSeqRef.current;
       setLoading(true);
       setError(null);
       try {
@@ -321,6 +328,7 @@ export default function XDashboardPage() {
           mode: opts?.mode ?? activeMode,
           refresh: opts?.refresh ?? false,
         });
+        if (seq !== fetchSeqRef.current) return;
         setData(result);
         if (!handleInput && result.status.handle) {
           setHandleInput(result.status.handle);
@@ -329,9 +337,10 @@ export default function XDashboardPage() {
         setImpressionsGoalInput(String(result.goals.impressions || 500000));
         setSelectedPostIndex(0);
       } catch (err) {
+        if (seq !== fetchSeqRef.current) return;
         setError(err instanceof Error ? err.message : String(err));
       } finally {
-        setLoading(false);
+        if (seq === fetchSeqRef.current) setLoading(false);
       }
     },
     [handleInput, activeMode],
@@ -870,12 +879,7 @@ export default function XDashboardPage() {
                   values={
                     history.length >= 2
                       ? history.map((h) => h.followers_count)
-                      : [
-                          Math.max(0, followers - 18),
-                          Math.max(0, followers - 12),
-                          Math.max(0, followers - 7),
-                          followers,
-                        ]
+                      : [followers, followers]
                   }
                   color="var(--xd-accent)"
                 />
@@ -926,7 +930,9 @@ export default function XDashboardPage() {
                   values={
                     chartPosts.length >= 2
                       ? chartPosts.map((p) => p.impressions)
-                      : [120, 340, 280, 610, 490]
+                      : chartPosts.length === 1
+                        ? [chartPosts[0].impressions, chartPosts[0].impressions]
+                        : [0, 0]
                   }
                   color="var(--xd-emerald)"
                 />

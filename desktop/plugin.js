@@ -435,7 +435,7 @@ function Sparkline({
   values,
   color = "var(--xd-accent)"
 }) {
-  const pts = values.length >= 2 ? values : [10, 12, 11, 14, 15, 18];
+  const pts = values.length >= 2 ? values : values.length === 1 ? [values[0], values[0]] : [0, 0];
   const min = Math.min(...pts);
   const max = Math.max(...pts);
   const span = Math.max(1, max - min);
@@ -542,8 +542,10 @@ function XDashboardPage() {
   const [impressionsGoalInput, setImpressionsGoalInput] = useState("500000");
   const [statusNotice, setStatusNotice] = useState(null);
   const [removedHandles, setRemovedHandles] = useState(/* @__PURE__ */ new Set());
+  const fetchSeqRef = useRef(0);
   const fetchDashboard = useCallback(
     async (opts) => {
+      const seq = ++fetchSeqRef.current;
       setLoading(true);
       setError(null);
       try {
@@ -552,6 +554,7 @@ function XDashboardPage() {
           mode: opts?.mode ?? activeMode,
           refresh: opts?.refresh ?? false
         });
+        if (seq !== fetchSeqRef.current) return;
         setData(result);
         if (!handleInput && result.status.handle) {
           setHandleInput(result.status.handle);
@@ -560,9 +563,10 @@ function XDashboardPage() {
         setImpressionsGoalInput(String(result.goals.impressions || 5e5));
         setSelectedPostIndex(0);
       } catch (err) {
+        if (seq !== fetchSeqRef.current) return;
         setError(err instanceof Error ? err.message : String(err));
       } finally {
-        setLoading(false);
+        if (seq === fetchSeqRef.current) setLoading(false);
       }
     },
     [handleInput, activeMode]
@@ -1079,12 +1083,7 @@ function XDashboardPage() {
                   /* @__PURE__ */ jsx(
                     Sparkline,
                     {
-                      values: history.length >= 2 ? history.map((h) => h.followers_count) : [
-                        Math.max(0, followers - 18),
-                        Math.max(0, followers - 12),
-                        Math.max(0, followers - 7),
-                        followers
-                      ],
+                      values: history.length >= 2 ? history.map((h) => h.followers_count) : [followers, followers],
                       color: "var(--xd-accent)"
                     }
                   )
@@ -1127,7 +1126,7 @@ function XDashboardPage() {
                   /* @__PURE__ */ jsx(
                     Sparkline,
                     {
-                      values: chartPosts.length >= 2 ? chartPosts.map((p) => p.impressions) : [120, 340, 280, 610, 490],
+                      values: chartPosts.length >= 2 ? chartPosts.map((p) => p.impressions) : chartPosts.length === 1 ? [chartPosts[0].impressions, chartPosts[0].impressions] : [0, 0],
                       color: "var(--xd-emerald)"
                     }
                   )

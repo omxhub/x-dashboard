@@ -1,7 +1,7 @@
 {
   "name": "hermes-x-dashboard-plugin",
   "private": true,
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Zero-cost Creator & Agent Command Center for X in Hermes Web Dashboard and Hermes Desktop",
   "type": "module",
   "scripts": {
